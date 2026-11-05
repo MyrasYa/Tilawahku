@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "suara": [
+    {
+      "id": "husary",
+      "nama": "Mahmoud Khalil Al-Husary",
+      "gaya": "murattal",
+      "status": "aktif",
+      "edition_id": "ar.husary",
+      "bitrate_kbps": 128,
+      "attribution": "Recitation by Mahmoud Khalil Al-Husary; source: AlQuran.cloud"
+    },
+    {
+      "id": "minshawi",
+      "nama": "Mohamed Siddiq Al-Minshawi",
+      "gaya": "murattal",
+      "status": "aktif",
+      "edition_id": "ar.minshawi",
+      "bitrate_kbps": 128,
+      "attribution": "Recitation by Mohamed Siddiq Al-Minshawi; source: AlQuran.cloud"
+    },
+    {
+      "id": "alafasy",
+      "nama": "Mishary Rashid Alafasy",
+      "gaya": "murattal",
+      "status": "aktif",
+      "edition_id": "ar.alafasy",
+      "bitrate_kbps": 128,
+      "attribution": "Recitation by Mishary Rashid Alafasy; edition ar.alafasy; source: AlQuran.cloud / Islamic Network CDN"
+    }
+  ]
+}
