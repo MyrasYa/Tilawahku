@@ -264,6 +264,30 @@ class ReadingRepository {
     return rows.map(AyahEntry.fromMap).toList(growable: false);
   }
 
+  Future<List<AyahEntry>> getAyahsForPage(int pageNumber) async {
+    final db = await _appDatabase.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT ayah.*, transliterasi.teks_latin, terjemah.teks_id
+      FROM ayah
+      LEFT JOIN terjemah USING (nomor_global)
+      LEFT JOIN transliterasi USING (nomor_global)
+      WHERE halaman = ?
+      ORDER BY nomor_global
+      ''',
+      [pageNumber],
+    );
+    return rows.map(AyahEntry.fromMap).toList(growable: false);
+  }
+
+  Future<int> getPageCount() async {
+    final db = await _appDatabase.database;
+    return Sqflite.firstIntValue(
+          await db.rawQuery('SELECT MAX(halaman) FROM ayah'),
+        ) ??
+        0;
+  }
+
   Future<void> setBookmarked(int globalAyahNumber, bool bookmarked) async {
     final db = await _appDatabase.database;
     if (bookmarked) {
@@ -307,11 +331,13 @@ class ReadingRepository {
   Future<List<AyahEntry>> getBookmarks() async {
     final db = await _appDatabase.database;
     final rows = await db.rawQuery('''
-      SELECT ayah.*, transliterasi.teks_latin, terjemah.teks_id
+      SELECT ayah.*, transliterasi.teks_latin, terjemah.teks_id,
+             surah.nama_id AS nama_surah_id
       FROM bookmark
       JOIN ayah USING (nomor_global)
       LEFT JOIN terjemah USING (nomor_global)
       LEFT JOIN transliterasi USING (nomor_global)
+      JOIN surah ON surah.id = ayah.surah
       ORDER BY bookmark.dibuat_pada DESC
     ''');
     return rows.map(AyahEntry.fromMap).toList(growable: false);

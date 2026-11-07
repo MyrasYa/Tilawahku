@@ -19,13 +19,15 @@ class ReadingScreen extends StatefulWidget {
     required this.preferences,
     this.surahNumber,
     this.juzNumber,
+    this.pageNumber,
     this.startingAyah,
-  }) : assert(surahNumber != null || juzNumber != null);
+  }) : assert(surahNumber != null || juzNumber != null || pageNumber != null);
 
   final ReadingRepository repository;
   final AppPreferences preferences;
   final int? surahNumber;
   final int? juzNumber;
+  final int? pageNumber;
   final int? startingAyah;
 
   @override
@@ -36,8 +38,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
   late Future<List<AyahEntry>> _ayahs;
   int? _displayedSurahNumber;
   int? _displayedJuzNumber;
+  int? _displayedPageNumber;
   int? _startingAyah;
   final ItemScrollController _itemScrollController = ItemScrollController();
+  final TextEditingController _pageController = TextEditingController();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
   List<AyahEntry> _loadedAyahs = const [];
   Set<int> _loadedGlobalNumbers = const {};
   bool _ayahsLoaded = false;
@@ -46,6 +52,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
   bool _showTranslation = true;
   double _arabicTextScale = 1;
   Voice? _voice;
+  String? _progressVoiceId;
+  Set<int> _bookmarkedNumbers = {};
   String? _error;
   int? _currentAyahNumber;
   int? _lastSavedProgressAyahNumber;
@@ -60,6 +68,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
   int _preparingTotal = 0;
   StreamSubscription<MediaItem?>? _mediaItemSubscription;
   StreamSubscription<PlaybackState>? _playbackStateSubscription;
+  Timer? _progressSaveDebounce;
   final AudioDownloadManager _downloadManager = AudioDownloadManager.instance;
   final AudioRepository _audioRepository = AudioRepository();
 
@@ -68,9 +77,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
     super.initState();
     _displayedSurahNumber = widget.surahNumber;
     _displayedJuzNumber = widget.juzNumber;
+    _displayedPageNumber = widget.pageNumber;
     _startingAyah = widget.startingAyah;
     _ayahs = _loadAyahs();
     _loadPreferences();
+    _itemPositionsListener.itemPositions.addListener(
+      _scheduleVisibleProgressSave,
+    );
     _mediaItemSubscription = QuranAudioHandler.instance?.mediaItem.listen((
       item,
     ) {
@@ -141,7 +154,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   Future<List<AyahEntry>> _loadAyahs() async {
     final List<AyahEntry> entries;
-    if (_displayedJuzNumber case final juz?) {
+    if (_displayedPageNumber case final page?) {
+      entries = await widget.repository.getAyahsForPage(page);
+    } else if (_displayedJuzNumber case final juz?) {
       entries = await widget.repository.getAyahsForJuz(juz);
     } else {
       entries = await widget.repository.getAyahsForSurah(
@@ -151,12 +166,174 @@ class _ReadingScreenState extends State<ReadingScreen> {
     _loadedAyahs = entries;
     _loadedGlobalNumbers = entries.map((ayah) => ayah.globalNumber).toSet();
     _ayahsLoaded = true;
+    unawaited(_loadBookmarks(entries));
     final pendingGlobalNumber = _pendingScrollGlobalNumber;
     if (pendingGlobalNumber != null) _scrollToAyah(pendingGlobalNumber);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncPlaybackIndicator(adoptQueue: true);
+      _saveInitialProgress();
+      _scheduleVisibleProgressSave();
     });
     return entries;
+  }
+
+  void _saveInitialProgress() {
+    final voiceId = _progressVoiceId;
+    if (voiceId == null || _loadedAyahs.isEmpty) return;
+    final initialIndex = _startingAyah == null
+        ? 0
+        : _loadedAyahs.indexWhere((ayah) => ayah.ayahNumber == _startingAyah);
+    if (initialIndex < 0 || initialIndex >= _loadedAyahs.length) return;
+
+    final ayah = _loadedAyahs[initialIndex];
+    if (ayah.globalNumber == _lastSavedProgressAyahNumber) return;
+    _lastSavedProgressAyahNumber = ayah.globalNumber;
+    unawaited(_saveProgress(voiceId, ayah.globalNumber));
+  }
+
+  Future<void> _loadBookmarks(List<AyahEntry> ayahs) async {
+    try {
+      final bookmarkedNumbers = await widget.repository.getBookmarkedNumbers(
+        ayahs.map((ayah) => ayah.globalNumber).toList(growable: false),
+      );
+      if (mounted) setState(() => _bookmarkedNumbers = bookmarkedNumbers);
+    } catch (error) {
+      _showAudioMessage('Gagal memuat bookmark ayat: $error');
+    }
+  }
+
+  Future<void> _toggleBookmark(AyahEntry ayah) async {
+    final bookmarked = !_bookmarkedNumbers.contains(ayah.globalNumber);
+    try {
+      await widget.repository.setBookmarked(ayah.globalNumber, bookmarked);
+      if (!mounted) return;
+      setState(() {
+        if (bookmarked) {
+          _bookmarkedNumbers = {..._bookmarkedNumbers, ayah.globalNumber};
+        } else {
+          _bookmarkedNumbers = {..._bookmarkedNumbers}
+            ..remove(ayah.globalNumber);
+        }
+      });
+    } catch (error) {
+      _showAudioMessage('Gagal menyimpan bookmark: $error');
+    }
+  }
+
+  void _scheduleVisibleProgressSave() {
+    _progressSaveDebounce?.cancel();
+    final voiceId = _progressVoiceId;
+    if (voiceId == null || _loadedAyahs.isEmpty) return;
+
+    final visiblePositions =
+        _itemPositionsListener.itemPositions.value
+            .where(
+              (position) =>
+                  position.itemTrailingEdge > 0 && position.itemLeadingEdge < 1,
+            )
+            .toList()
+          ..sort((first, second) {
+            final edgeOrder = first.itemLeadingEdge.compareTo(
+              second.itemLeadingEdge,
+            );
+            return edgeOrder != 0
+                ? edgeOrder
+                : first.index.compareTo(second.index);
+          });
+    final initialIndex = _startingAyah == null
+        ? 0
+        : _loadedAyahs.indexWhere((ayah) => ayah.ayahNumber == _startingAyah);
+    final index = visiblePositions.isEmpty
+        ? initialIndex < 0
+              ? 0
+              : initialIndex
+        : visiblePositions.first.index;
+    if (index >= _loadedAyahs.length) {
+      return;
+    }
+
+    final ayah = _loadedAyahs[index];
+    if (ayah.globalNumber == _lastSavedProgressAyahNumber) return;
+    _progressSaveDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted || _progressVoiceId != voiceId) return;
+      _lastSavedProgressAyahNumber = ayah.globalNumber;
+      unawaited(_saveProgress(voiceId, ayah.globalNumber));
+    });
+  }
+
+  Future<void> _choosePage() async {
+    try {
+      final pageCount = await widget.repository.getPageCount();
+      if (!mounted) return;
+      if (pageCount == 0) {
+        throw StateError('Data halaman Qur’an belum tersedia.');
+      }
+
+      _pageController.text = '${_displayedPageNumber ?? 1}';
+      final pageNumber = await showDialog<int>(
+        context: context,
+        builder: (context) {
+          String? validationError;
+          return StatefulBuilder(
+            builder: (context, setDialogState) => AlertDialog(
+              title: const Text('Buka halaman'),
+              content: TextField(
+                controller: _pageController,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Nomor halaman',
+                  helperText: 'Pilih halaman 1–$pageCount.',
+                  errorText: validationError,
+                ),
+                onSubmitted: (_) {
+                  final value = int.tryParse(_pageController.text.trim());
+                  if (value == null || value < 1 || value > pageCount) {
+                    setDialogState(
+                      () => validationError =
+                          'Masukkan nomor halaman dari 1 sampai $pageCount.',
+                    );
+                    return;
+                  }
+                  Navigator.of(context).pop(value);
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Batal'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final value = int.tryParse(_pageController.text.trim());
+                    if (value == null || value < 1 || value > pageCount) {
+                      setDialogState(
+                        () => validationError =
+                            'Masukkan nomor halaman dari 1 sampai $pageCount.',
+                      );
+                      return;
+                    }
+                    Navigator.of(context).pop(value);
+                  },
+                  child: const Text('Buka'),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+      if (!mounted || pageNumber == null) return;
+
+      setState(() {
+        _displayedPageNumber = pageNumber;
+        _displayedJuzNumber = null;
+        _displayedSurahNumber = null;
+        _startingAyah = null;
+        _ayahs = _loadAyahs();
+      });
+    } catch (error) {
+      if (mounted) _showAudioMessage('Gagal membuka halaman: $error');
+    }
   }
 
   void _scrollToAyah(int globalAyahNumber) {
@@ -185,14 +362,19 @@ class _ReadingScreenState extends State<ReadingScreen> {
       final visible = await widget.preferences.translationVisible;
       final scale = await widget.preferences.arabicTextScale;
       final voiceId = await widget.preferences.selectedVoiceId;
-      final voices = await const VoiceCatalog().load();
-      final voice = voices.where((item) => item.id == voiceId).firstOrNull;
       if (!mounted) return;
       setState(() {
         _showTranslation = visible;
         _arabicTextScale = scale;
-        _voice = voice;
+        _progressVoiceId = voiceId;
       });
+      _saveInitialProgress();
+      _scheduleVisibleProgressSave();
+
+      final voices = await const VoiceCatalog().load();
+      final voice = voices.where((item) => item.id == voiceId).firstOrNull;
+      if (!mounted) return;
+      setState(() => _voice = voice);
       _syncPlaybackIndicator(adoptQueue: true);
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -495,28 +677,42 @@ class _ReadingScreenState extends State<ReadingScreen> {
     ayah: ayah,
     showTranslation: _showTranslation,
     textScale: _arabicTextScale,
+    isBookmarked: _bookmarkedNumbers.contains(ayah.globalNumber),
     isPlaying: _currentAyahNumber == ayah.globalNumber && _isPlaying,
     isLoading: _loadingAyahNumber == ayah.globalNumber,
     playbackLocked: _isPreparingAll,
     onPlay: () => _playAyah(ayah),
+    onToggleBookmark: () => _toggleBookmark(ayah),
   );
 
   @override
   void dispose() {
     unawaited(_mediaItemSubscription?.cancel());
     unawaited(_playbackStateSubscription?.cancel());
+    _itemPositionsListener.itemPositions.removeListener(
+      _scheduleVisibleProgressSave,
+    );
+    _progressSaveDebounce?.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final title = _displayedJuzNumber == null
+    final title = _displayedPageNumber != null
+        ? 'Halaman $_displayedPageNumber'
+        : _displayedJuzNumber == null
         ? 'Surah $_displayedSurahNumber'
         : 'Juz $_displayedJuzNumber';
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
         actions: [
+          IconButton(
+            tooltip: 'Buka halaman',
+            onPressed: _choosePage,
+            icon: const Icon(Icons.find_in_page_outlined),
+          ),
           IconButton.filled(
             tooltip:
                 '${_isPreparingAll || _isSelectingPlayAll
@@ -657,6 +853,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
                       );
                 return ScrollablePositionedList.builder(
                   itemScrollController: _itemScrollController,
+                  itemPositionsListener: _itemPositionsListener,
                   initialScrollIndex: initialIndex < 0 ? 0 : initialIndex,
                   initialAlignment: initialIndex < 0 ? 0 : 0.04,
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -689,19 +886,23 @@ class _AyahCard extends StatelessWidget {
     required this.ayah,
     required this.showTranslation,
     required this.textScale,
+    required this.isBookmarked,
     required this.isPlaying,
     required this.isLoading,
     required this.playbackLocked,
     required this.onPlay,
+    required this.onToggleBookmark,
   });
 
   final AyahEntry ayah;
   final bool showTranslation;
   final double textScale;
+  final bool isBookmarked;
   final bool isPlaying;
   final bool isLoading;
   final bool playbackLocked;
   final VoidCallback onPlay;
+  final VoidCallback onToggleBookmark;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -748,6 +949,13 @@ class _AyahCard extends StatelessWidget {
                         : Icons.play_circle_fill_rounded,
                     color: AppColors.gold,
                   ),
+                ),
+              ),
+              IconButton(
+                tooltip: isBookmarked ? 'Hapus bookmark' : 'Simpan bookmark',
+                onPressed: onToggleBookmark,
+                icon: Icon(
+                  isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border,
                 ),
               ),
             ],

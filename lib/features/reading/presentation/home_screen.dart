@@ -7,6 +7,7 @@ import '../../download/presentation/download_screen.dart';
 import '../../player/data/quran_audio_handler.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../data/reading_repository.dart';
+import 'bookmarks_screen.dart';
 import 'reading_screen.dart';
 import 'search_screen.dart';
 
@@ -206,6 +207,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             icon: const Icon(Icons.search_rounded),
+          ),
+          IconButton(
+            tooltip: 'Bookmark ayat',
+            onPressed: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => BookmarksScreen(
+                  repository: _repository,
+                  preferences: widget.preferences,
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.bookmarks_outlined),
           ),
           IconButton(
             tooltip: 'Unduhan',

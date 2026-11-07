@@ -10,7 +10,8 @@ The downloads screen groups audio progress and storage use by juz.
 - `lib/app/` — application bootstrap and centralized light/dark themes.
 - `lib/core/database/` — SQLite schema, migration, and bundled database copy.
 - `lib/core/preferences/` — onboarding and local preferences.
-- `lib/features/reading/` — home, reader, and content repository.
+- `lib/features/reading/` — home, page and surah reader, scroll-saved reading
+  progress, bookmark management, and content repository.
 - `lib/features/voices/` — local voice catalog and voice selection.
 - `lib/features/player/` — local audio repository, background playback, and
   repeat/player screens.
