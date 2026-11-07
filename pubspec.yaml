@@ -41,6 +41,7 @@ dependencies:
   path_provider: ^2.1.5
   shared_preferences: ^2.5.3
   sqflite: ^2.4.2
+  sqflite_common_ffi_web: ^1.2.0
   storage_space: ^1.4.0
   scrollable_positioned_list: ^0.3.8
 
@@ -72,6 +73,7 @@ flutter:
   assets:
     - assets/config/suara.json
     - assets/data/tilawahku_content.db
+    - assets/data/quran_web_preview.json
     - assets/branding/tilawahku_icon.png
     - assets/fonts/OFL.txt
   fonts:

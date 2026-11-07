@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/app_theme.dart';
@@ -36,6 +37,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
   @override
   void initState() {
     super.initState();
+    if (kIsWeb) return;
     _downloadManager.addListener(_onDownloadChange);
     _load();
   }
@@ -402,7 +404,18 @@ class _DownloadScreenState extends State<DownloadScreen> {
           ],
         ),
       ),
-      body: _loading
+      body: kIsWeb
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Audio belum tersedia secara lokal. Pengunduhan dan '
+                  'penyimpanan audio tidak diaktifkan di Web preview.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          : _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? _DownloadMessage(

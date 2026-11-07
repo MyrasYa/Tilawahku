@@ -81,6 +81,26 @@ flutter test
 Background audio uses `just_audio` and `audio_service`. The Android activity
 and manifest are configured for background playback and system media controls.
 
+## Flutter Web preview
+
+The browser preview uses the experimental `sqflite_common_ffi_web` SQLite
+driver, which stores its database in IndexedDB. After `flutter pub get`, install
+the driver's WebAssembly and worker files into `web/`:
+
+```shell
+dart run sqflite_common_ffi_web:setup
+flutter run -d chrome
+```
+
+The Web database is initialized from `assets/data/quran_web_preview.json`.
+That fixture is generated from the project's bundled SQLite content with
+`python tools/build_quran_web_preview.py`; it contains the same 114 surahs and
+6,236 ayahs, translations, and transliterations. Bookmarks and reading
+preferences are stored by the browser's SQLite/IndexedDB and
+SharedPreferences/Web implementations, respectively. Web preview does not
+enable audio playback or audio downloads; it displays this limitation instead
+of claiming that audio is stored locally.
+
 ## Current operational limitations
 
 - Text and translation are available offline from the bundled database.

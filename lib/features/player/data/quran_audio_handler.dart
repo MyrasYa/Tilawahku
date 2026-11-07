@@ -1,7 +1,9 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io'
+    if (dart.library.js_interop) '../../../core/platform/unsupported_io.dart';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
 import 'audio_repository.dart';
@@ -26,6 +28,7 @@ class QuranAudioHandler extends BaseAudioHandler
   static QuranAudioHandler? get instance => _instance;
 
   static Future<void> initialize() async {
+    if (kIsWeb) return;
     if (_instance != null) return;
     final handler = QuranAudioHandler();
     await AudioService.init(

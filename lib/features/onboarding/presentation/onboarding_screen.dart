@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_theme.dart';
 import '../../../core/preferences/app_preferences.dart';
-import '../../voices/presentation/voice_selection_screen.dart';
+import '../../reading/presentation/home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({
@@ -50,7 +50,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
-          builder: (_) => VoiceSelectionScreen(
+          builder: (_) => HomeScreen(
             preferences: widget.preferences,
             onSetDarkMode: widget.onSetDarkMode,
           ),

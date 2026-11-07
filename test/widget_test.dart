@@ -8,6 +8,7 @@ import 'package:tilawahku/core/preferences/app_preferences.dart';
 import 'package:tilawahku/features/player/data/audio_repository.dart';
 import 'package:tilawahku/features/reading/data/reading_repository.dart';
 import 'package:tilawahku/features/reading/presentation/bookmarks_screen.dart';
+import 'package:tilawahku/features/reading/presentation/home_screen.dart';
 import 'package:tilawahku/features/reading/presentation/reading_screen.dart';
 import 'package:tilawahku/features/reading/presentation/search_screen.dart';
 import 'package:tilawahku/features/repeat/presentation/repeat_settings_screen.dart';
@@ -77,6 +78,24 @@ void main() {
 
     expect(find.text('Baca dengan tenang'), findsOneWidget);
     expect(find.text('Lanjut'), findsOneWidget);
+  });
+
+  testWidgets('home opens the reader without a selected voice', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          repository: _FakeReadingRepository(),
+          preferences: const _NoVoiceReaderPreferences(),
+          onSetDarkMode: (_) {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mulai Membaca'), findsOneWidget);
+    await tester.tap(find.text('Mulai Membaca'));
+    await tester.pumpAndSettle();
+    expect(find.text('بِسْمِ اللَّهِ'), findsOneWidget);
   });
 
   testWidgets('repeat settings exposes ayah repetition count', (tester) async {
@@ -170,6 +189,25 @@ void main() {
     );
   });
 
+  testWidgets('reader remains available without selecting a voice', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ReadingScreen(
+          repository: _FakeReadingRepository(),
+          preferences: const _NoVoiceReaderPreferences(),
+          surahNumber: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('بِسْمِ اللَّهِ'), findsOneWidget);
+    expect(find.text('Dengan nama Allah'), findsOneWidget);
+    expect(find.byTooltip('Simpan bookmark'), findsOneWidget);
+  });
+
   testWidgets('reading progress follows the visible ayah while scrolling', (
     tester,
   ) async {
@@ -255,6 +293,19 @@ class _FakeReadingRepository extends ReadingRepository {
   final List<(String, int)> savedProgress = [];
 
   @override
+  Future<List<Surah>> getSurahs() async => const [
+    Surah(
+      id: 1,
+      nameArabic: 'الفاتحة',
+      nameIndonesian: 'Al-Fatihah',
+      ayahCount: 7,
+    ),
+  ];
+
+  @override
+  Future<AyahEntry?> getProgress(String voiceId) async => null;
+
+  @override
   Future<List<AyahEntry>> getAyahsForSurah(
     int surahNumber, {
     int? limit,
@@ -310,6 +361,19 @@ class _ReaderPreferences extends AppPreferences {
 
   @override
   Future<String?> get selectedVoiceId async => 'husary';
+
+  @override
+  Future<bool> get translationVisible async => true;
+
+  @override
+  Future<double> get arabicTextScale async => 1;
+}
+
+class _NoVoiceReaderPreferences extends AppPreferences {
+  const _NoVoiceReaderPreferences();
+
+  @override
+  Future<String?> get selectedVoiceId async => null;
 
   @override
   Future<bool> get translationVisible async => true;

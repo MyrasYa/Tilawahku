@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/app_theme.dart';
@@ -63,6 +64,14 @@ class _VoiceSelectionScreenState extends State<VoiceSelectionScreen> {
       final voices = await _voices;
       if (!mounted) return;
       final selectedVoice = voices.firstWhere((voice) => voice.id == voiceId);
+      if (kIsWeb) {
+        await _voiceRepository.save(selectedVoice);
+        await widget.preferences.setSelectedVoiceId(voiceId);
+        if (!mounted) return;
+        _leaveSelection(voiceId);
+        return;
+      }
+
       final previousVoiceId = await widget.preferences.selectedVoiceId;
       if (!mounted) return;
       if (previousVoiceId == voiceId) {
@@ -228,6 +237,14 @@ class _VoiceSelectionScreenState extends State<VoiceSelectionScreen> {
         final voices = snapshot.data!;
         return Column(
           children: [
+            if (kIsWeb)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Text(
+                  'Pemilihan qari opsional. Pemutaran dan unduhan audio '
+                  'tidak tersedia di Web preview.',
+                ),
+              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),

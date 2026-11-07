@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -392,6 +393,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
   }
 
   Future<void> _playAyah(AyahEntry ayah) async {
+    if (kIsWeb) {
+      _showAudioMessage(
+        'Audio belum tersedia secara lokal; pemutaran dinonaktifkan di Web preview.',
+      );
+      return;
+    }
+
     final handler = QuranAudioHandler.instance;
     final voice = _voice;
     if (handler == null ||
@@ -459,6 +467,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
     bool chooseSection = false,
     _PlayAllSelection? selectionToPlay,
   }) async {
+    if (kIsWeb) {
+      _showAudioMessage(
+        'Audio belum tersedia secara lokal; pemutaran dinonaktifkan di Web preview.',
+      );
+      return;
+    }
+
     final handler = QuranAudioHandler.instance;
     if (!chooseSection && _allAyahsQueueLoaded && handler != null) {
       try {
@@ -764,6 +779,29 @@ class _ReadingScreenState extends State<ReadingScreen> {
       ),
       body: Column(
         children: [
+          if (kIsWeb)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Web preview · teks, terjemahan, transliterasi, '
+                          'bookmark, dan navigasi aktif. Audio belum tersedia '
+                          'secara lokal dan tidak diunduh di browser.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           if (_isPreparingAll)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),

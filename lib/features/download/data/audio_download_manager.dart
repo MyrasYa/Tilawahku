@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io'
+    if (dart.library.js_interop) '../../../core/platform/unsupported_io.dart';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
