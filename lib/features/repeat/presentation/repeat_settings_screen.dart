@@ -8,10 +8,14 @@ class RepeatSettingsScreen extends StatefulWidget {
     super.key,
     required this.tracks,
     required this.currentGlobalAyah,
+    this.allowSurahRepeat = true,
+    this.allowJuzRepeat = true,
   });
 
   final List<AudioTrack> tracks;
   final int? currentGlobalAyah;
+  final bool allowSurahRepeat;
+  final bool allowJuzRepeat;
 
   @override
   State<RepeatSettingsScreen> createState() => _RepeatSettingsScreenState();
@@ -27,6 +31,7 @@ class _RepeatSettingsScreenState extends State<RepeatSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.tracks.isEmpty) return;
     final firstGlobalAyah = widget.tracks.first.globalNumber;
     final hasCurrentAyah = widget.tracks.any(
       (track) => track.globalNumber == widget.currentGlobalAyah,
@@ -36,21 +41,37 @@ class _RepeatSettingsScreenState extends State<RepeatSettingsScreen> {
   }
 
   void _save() {
+    if (widget.tracks.isEmpty) return;
     if (_mode == RepeatMode.range &&
         (_rangeStart == null ||
             _rangeEnd == null ||
-            _rangeStart! > _rangeEnd!)) {
-      setState(() => _validationError = 'Pilih rentang ayat yang valid.');
+            _rangeStart! > _rangeEnd! ||
+            widget.currentGlobalAyah == null ||
+            widget.currentGlobalAyah! < _rangeStart! ||
+            widget.currentGlobalAyah! > _rangeEnd! ||
+            !_hasCompleteRange(_rangeStart!, _rangeEnd!))) {
+      setState(
+        () => _validationError =
+            'Pilih rentang lengkap yang mencakup ayat aktif.',
+      );
       return;
     }
     Navigator.of(context).pop(
       RepeatSettings(
         mode: _mode,
-        ayahCount: _repeatCount,
+        repeatCount: _repeatCount,
         rangeStart: _rangeStart,
         rangeEnd: _rangeEnd,
       ),
     );
+  }
+
+  bool _hasCompleteRange(int start, int end) {
+    final available = widget.tracks.map((track) => track.globalNumber).toSet();
+    for (var number = start; number <= end; number++) {
+      if (!available.contains(number)) return false;
+    }
+    return true;
   }
 
   String _ayahLabel(int globalNumber) {
@@ -65,48 +86,62 @@ class _RepeatSettingsScreenState extends State<RepeatSettingsScreen> {
     final availableAyahs =
         widget.tracks.map((track) => track.globalNumber).toSet().toList()
           ..sort();
+    final finiteRepeat =
+        _mode != RepeatMode.none && _mode != RepeatMode.unlimited;
+    final modeOptions = [
+      (
+        RepeatMode.none,
+        'Tanpa pengulangan',
+        'Putar dari ayat aktif hingga akhir antrean.',
+      ),
+      (
+        RepeatMode.ayah,
+        'Ulang ayat aktif',
+        'Ayat aktif diputar sebanyak N kali, lalu lanjut ke ayat berikutnya.',
+      ),
+      (
+        RepeatMode.range,
+        'Ulang rentang ayat',
+        'Putar rentang inklusif sebanyak N putaran, lalu lanjut setelah ayat akhir.',
+      ),
+      if (widget.allowSurahRepeat)
+        (
+          RepeatMode.surah,
+          'Ulang surah',
+          'Putar ayat-ayat surah aktif sebanyak N putaran, lalu lanjut setelah surah.',
+        ),
+      if (widget.allowJuzRepeat)
+        (
+          RepeatMode.juz,
+          'Ulang juz',
+          'Putar semua ayat juz aktif berurutan (termasuk lintas surah) sebanyak N putaran.',
+        ),
+      (
+        RepeatMode.unlimited,
+        'Ulang tanpa batas',
+        'Ulangi seluruh antrean tanpa batas.',
+      ),
+    ];
     return Scaffold(
       appBar: AppBar(title: const Text('Mode ulang')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (widget.tracks.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Antrean audio belum tersedia.'),
+              ),
+            ),
           RadioGroup<RepeatMode>(
             groupValue: _mode,
-            onChanged: (value) => setState(() => _mode = value!),
+            onChanged: (value) {
+              if (value != null) setState(() => _mode = value);
+            },
             child: Column(
               children: [
-                for (final (mode, label, description) in const [
-                  (
-                    RepeatMode.none,
-                    'Tanpa pengulangan',
-                    'Putar dari ayat aktif hingga akhir antrian.',
-                  ),
-                  (
-                    RepeatMode.ayah,
-                    'Ulang ayat aktif',
-                    'Ulangi ayat yang sedang diputar, lalu lanjutkan.',
-                  ),
-                  (
-                    RepeatMode.range,
-                    'Ulang rentang ayat',
-                    'Putar berulang hanya pada rentang yang dipilih.',
-                  ),
-                  (
-                    RepeatMode.surah,
-                    'Ulang surah',
-                    'Putar berulang seluruh surah ayat aktif.',
-                  ),
-                  (
-                    RepeatMode.juz,
-                    'Ulang juz',
-                    'Putar berulang seluruh juz ayat aktif.',
-                  ),
-                  (
-                    RepeatMode.unlimited,
-                    'Ulang tanpa batas',
-                    'Putar berulang seluruh antrian yang tersedia.',
-                  ),
-                ])
+                for (final (mode, label, description) in modeOptions)
                   Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: RadioListTile<RepeatMode>(
@@ -118,14 +153,24 @@ class _RepeatSettingsScreenState extends State<RepeatSettingsScreen> {
               ],
             ),
           ),
-          if (_mode == RepeatMode.ayah)
+          if (finiteRepeat && widget.tracks.isNotEmpty)
             Card(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Jumlah putaran: $_repeatCount'),
+                    Text(
+                      _mode == RepeatMode.ayah
+                          ? 'Jumlah pemutaran ayat: $_repeatCount'
+                          : 'Jumlah putaran total: $_repeatCount',
+                    ),
+                    if (_mode != RepeatMode.ayah)
+                      const Text(
+                        'Putaran pertama dimulai dari posisi aktif. Setelah '
+                        'putaran terakhir, pemutaran berlanjut setelah scope '
+                        'atau berhenti jika scope berada di akhir antrean.',
+                      ),
                     Slider(
                       min: 1,
                       max: 100,

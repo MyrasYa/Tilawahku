@@ -128,8 +128,18 @@ void main() {
 
     await tester.tap(find.text('Ulang ayat aktif'));
     await tester.pumpAndSettle();
-    expect(find.text('Jumlah putaran: 3'), findsOneWidget);
+    expect(find.text('Jumlah pemutaran ayat: 3'), findsOneWidget);
     expect(find.text('Ulang rentang ayat'), findsOneWidget);
+  });
+
+  testWidgets('repeat settings handles an empty audio queue', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: RepeatSettingsScreen(tracks: [], currentGlobalAyah: null),
+      ),
+    );
+
+    expect(find.text('Antrean audio belum tersedia.'), findsOneWidget);
   });
 
   testWidgets('search offers only the three requested filters', (tester) async {

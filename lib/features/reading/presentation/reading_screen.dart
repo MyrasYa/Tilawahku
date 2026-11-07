@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../../app/app_theme.dart';
@@ -10,6 +10,10 @@ import '../../../core/preferences/app_preferences.dart';
 import '../../download/data/audio_download_manager.dart';
 import '../../player/data/audio_repository.dart';
 import '../../player/data/quran_audio_handler.dart';
+import '../../player/presentation/playback_speed_dialog.dart';
+import '../../player/presentation/sleep_timer_dialog.dart';
+import '../../repeat/domain/repeat_settings.dart';
+import '../../repeat/presentation/repeat_settings_screen.dart';
 import '../../voices/data/voice_catalog.dart';
 import '../data/reading_repository.dart';
 
@@ -62,6 +66,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
   bool _isPlaying = false;
   bool _isPreparingAll = false;
   bool _isSelectingPlayAll = false;
+  double _playbackSpeed = 1.0;
   bool _allAyahsQueueLoaded = false;
   bool _followAudioQueue = false;
   _PlayAllSelection? _lastPlayAllSelection;
@@ -69,7 +74,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
   int _preparingTotal = 0;
   StreamSubscription<MediaItem?>? _mediaItemSubscription;
   StreamSubscription<PlaybackState>? _playbackStateSubscription;
+  StreamSubscription<Duration?>? _sleepTimerSubscription;
   Timer? _progressSaveDebounce;
+  Duration? _sleepTimerRemaining;
   final AudioDownloadManager _downloadManager = AudioDownloadManager.instance;
   final AudioRepository _audioRepository = AudioRepository();
 
@@ -94,6 +101,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
         .listen((state) {
           _syncPlaybackIndicator(adoptQueue: true);
         });
+    final handler = QuranAudioHandler.instance;
+    _sleepTimerRemaining = handler?.sleepTimerRemaining;
+    _sleepTimerSubscription = handler?.sleepTimerRemainingStream.listen((
+      remaining,
+    ) {
+      if (mounted) setState(() => _sleepTimerRemaining = remaining);
+    });
     _syncPlaybackIndicator();
   }
 
@@ -119,6 +133,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         : null;
     final isPlaying =
         _followAudioQueue && (handler?.playbackState.value.playing ?? false);
+    final playbackSpeed = handler?.playbackSpeed ?? 1.0;
     if (currentAyahNumber != null &&
         currentAyahNumber != _lastScrollGlobalNumber) {
       _lastScrollGlobalNumber = currentAyahNumber;
@@ -133,12 +148,15 @@ class _ReadingScreenState extends State<ReadingScreen> {
         unawaited(_saveProgress(voiceId, currentAyahNumber));
       }
     }
-    if (currentAyahNumber == _currentAyahNumber && isPlaying == _isPlaying) {
+    if (currentAyahNumber == _currentAyahNumber &&
+        isPlaying == _isPlaying &&
+        playbackSpeed == _playbackSpeed) {
       return;
     }
     setState(() {
       _currentAyahNumber = currentAyahNumber;
       _isPlaying = isPlaying;
+      _playbackSpeed = playbackSpeed;
     });
   }
 
@@ -639,6 +657,102 @@ class _ReadingScreenState extends State<ReadingScreen> {
     await _togglePlayAllAyahs(chooseSection: true, selectionToPlay: selection);
   }
 
+  Future<void> _configureRepeat() async {
+    final handler = QuranAudioHandler.instance;
+    final selection = _lastPlayAllSelection;
+    if (kIsWeb ||
+        handler == null ||
+        handler.tracks.isEmpty ||
+        !_allAyahsQueueLoaded ||
+        selection == null) {
+      _showAudioMessage(
+        'Mulai pemutaran semua ayat pada surah atau juz terlebih dahulu.',
+      );
+      return;
+    }
+    final currentIndex = handler.currentIndex;
+    if (currentIndex == null ||
+        currentIndex < 0 ||
+        currentIndex >= handler.tracks.length) {
+      _showAudioMessage('Tidak ada ayat aktif di antrean audio.');
+      return;
+    }
+
+    final settings = await Navigator.of(context).push<RepeatSettings>(
+      MaterialPageRoute(
+        builder: (_) => RepeatSettingsScreen(
+          tracks: handler.tracks,
+          allowSurahRepeat: selection.scope == _PlayAllScope.surah,
+          allowJuzRepeat: selection.scope == _PlayAllScope.juz,
+          currentGlobalAyah: handler.tracks[currentIndex].globalNumber,
+        ),
+      ),
+    );
+    if (settings == null || !mounted) return;
+    try {
+      await handler.applyRepeatSettings(settings);
+      final message = switch (settings.mode) {
+        RepeatMode.none => 'Pengulangan dinonaktifkan.',
+        RepeatMode.unlimited => 'Antrean akan diulang tanpa batas.',
+        RepeatMode.ayah =>
+          'Ayat aktif akan diputar ${settings.repeatCount} kali.',
+        RepeatMode.range ||
+        RepeatMode.surah ||
+        RepeatMode.juz => 'Scope akan diputar ${settings.repeatCount} putaran.',
+      };
+      _showAudioMessage(message);
+    } catch (error) {
+      _showAudioMessage('Gagal menerapkan pengaturan pengulangan: $error');
+    }
+  }
+
+  Future<void> _configurePlaybackSpeed() async {
+    final handler = QuranAudioHandler.instance;
+    if (kIsWeb || handler == null || handler.tracks.isEmpty) {
+      _showAudioMessage('Mulai pemutaran audio sebelum mengatur kecepatan.');
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => PlaybackSpeedDialog(
+        initialSpeed: handler.playbackSpeed,
+        onChanged: handler.setSpeed,
+        onError: (error) {
+          _showAudioMessage('Gagal mengubah kecepatan pemutaran: $error');
+        },
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _playbackSpeed = handler.playbackSpeed);
+  }
+
+  Future<void> _configureSleepTimer() async {
+    final handler = QuranAudioHandler.instance;
+    if (kIsWeb || handler == null || handler.tracks.isEmpty) {
+      _showAudioMessage('Mulai pemutaran audio sebelum mengatur sleep timer.');
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => SleepTimerDialog(
+        initialRemaining: handler.sleepTimerRemaining,
+        remainingStream: handler.sleepTimerRemainingStream,
+        onStart: (duration) {
+          handler.startSleepTimer(duration);
+          if (mounted) {
+            setState(() => _sleepTimerRemaining = handler.sleepTimerRemaining);
+          }
+        },
+        onCancel: () {
+          handler.cancelSleepTimer();
+          if (mounted) setState(() => _sleepTimerRemaining = null);
+        },
+      ),
+    );
+  }
+
   void _startPlayback(
     QuranAudioHandler handler, {
     String errorMessage = 'Tidak dapat memutar ayat.',
@@ -704,6 +818,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
   void dispose() {
     unawaited(_mediaItemSubscription?.cancel());
     unawaited(_playbackStateSubscription?.cancel());
+    unawaited(_sleepTimerSubscription?.cancel());
     _itemPositionsListener.itemPositions.removeListener(
       _scheduleVisibleProgressSave,
     );
@@ -763,6 +878,44 @@ class _ReadingScreenState extends State<ReadingScreen> {
                     _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                   )
                 : const Icon(Icons.playlist_play_rounded),
+          ),
+          IconButton(
+            tooltip: _allAyahsQueueLoaded
+                ? 'Atur pengulangan audio'
+                : 'Putar semua ayat untuk mengatur pengulangan',
+            onPressed: !kIsWeb && _allAyahsQueueLoaded
+                ? _configureRepeat
+                : null,
+            icon: const Icon(Icons.repeat_rounded),
+          ),
+          Tooltip(
+            message: 'Kecepatan pemutaran',
+            child: TextButton(
+              onPressed:
+                  !kIsWeb &&
+                      (QuranAudioHandler.instance?.tracks.isNotEmpty ?? false)
+                  ? _configurePlaybackSpeed
+                  : null,
+              child: Text(
+                '${_playbackSpeed.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '')}×',
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: _sleepTimerRemaining == null
+                ? 'Atur sleep timer'
+                : 'Sleep timer ${SleepTimerDialog.formatRemaining(_sleepTimerRemaining)}',
+            onPressed:
+                !kIsWeb &&
+                    (QuranAudioHandler.instance?.tracks.isNotEmpty ?? false)
+                ? _configureSleepTimer
+                : null,
+            icon: _sleepTimerRemaining == null
+                ? const Icon(Icons.bedtime_outlined)
+                : Text(
+                    SleepTimerDialog.formatRemaining(_sleepTimerRemaining),
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
           ),
           IconButton(
             tooltip: _showTranslation
