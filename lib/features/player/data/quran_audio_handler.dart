@@ -9,6 +9,7 @@ import 'package:just_audio/just_audio.dart';
 
 import 'audio_repository.dart';
 import '../../repeat/domain/repeat_settings.dart';
+import '../../voices/data/surah_audio_catalog.dart';
 import '../domain/sleep_timer_controller.dart';
 
 class QuranAudioHandler extends BaseAudioHandler
@@ -82,6 +83,7 @@ class QuranAudioHandler extends BaseAudioHandler
   final AudioPlayer _player = AudioPlayer();
   AudioServiceRepeatMode _repeatMode = AudioServiceRepeatMode.none;
   List<AudioTrack> _tracks = const [];
+  List<SurahAudioSource> _surahAudioSources = const [];
   RepeatPlaybackPlan? _repeatPlan;
   int _completedRepeatPasses = 0;
   Duration _lastPosition = Duration.zero;
@@ -90,6 +92,10 @@ class QuranAudioHandler extends BaseAudioHandler
   late final SleepTimerController _sleepTimer;
 
   List<AudioTrack> get tracks => List.unmodifiable(_tracks);
+
+  bool get hasQueue => _tracks.isNotEmpty || _surahAudioSources.isNotEmpty;
+
+  bool get hasSurahAudioQueue => _surahAudioSources.isNotEmpty;
 
   int? get currentIndex => _player.currentIndex;
 
@@ -163,11 +169,67 @@ class QuranAudioHandler extends BaseAudioHandler
 
     _repeatPlan = null;
     _completedRepeatPasses = 0;
+    _surahAudioSources = const [];
     _tracks = List.unmodifiable(tracks);
     await _player.stop();
     queue.add(items);
     await _player.setAudioSources(
       tracks.map((track) => AudioSource.file(track.filePath)).toList(),
+      initialIndex: initialTrack,
+    );
+    _lastPosition = _player.position;
+    mediaItem.add(items[initialTrack]);
+  }
+
+  Future<void> loadSurahAudio(
+    List<SurahAudioSource> sources, {
+    required String voiceName,
+    required String voiceId,
+    int initialTrack = 0,
+  }) async {
+    if (sources.length != 114 ||
+        sources.indexed.any((entry) => entry.$1 + 1 != entry.$2.number)) {
+      throw StateError('Katalog audio harus memuat 114 surah berurutan.');
+    }
+    if (initialTrack < 0 || initialTrack >= sources.length) {
+      throw RangeError.range(
+        initialTrack,
+        0,
+        sources.length - 1,
+        'initialTrack',
+      );
+    }
+
+    final items = sources
+        .map(
+          (source) => MediaItem(
+            id: 'surah-${source.number}',
+            title: source.name,
+            artist: voiceName,
+            album: 'Mode Audio Per Surah',
+            extras: {
+              'audioMode': 'surah',
+              'voiceId': voiceId,
+              'surahNumber': source.number,
+            },
+          ),
+        )
+        .toList(growable: false);
+
+    _repeatPlan = null;
+    _completedRepeatPasses = 0;
+    _tracks = const [];
+    _surahAudioSources = List.unmodifiable(sources);
+    await _player.stop();
+    await _player.setLoopMode(LoopMode.off);
+    _repeatMode = AudioServiceRepeatMode.none;
+    playbackState.add(
+      playbackState.value.copyWith(repeatMode: AudioServiceRepeatMode.none),
+    );
+    await super.setRepeatMode(AudioServiceRepeatMode.none);
+    queue.add(items);
+    await _player.setAudioSources(
+      sources.map((source) => AudioSource.uri(source.uri)).toList(),
       initialIndex: initialTrack,
     );
     _lastPosition = _player.position;
@@ -227,6 +289,11 @@ class QuranAudioHandler extends BaseAudioHandler
 
   @override
   Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
+    if (hasSurahAudioQueue && repeatMode != AudioServiceRepeatMode.none) {
+      throw UnsupportedError(
+        'Pengulangan belum tersedia untuk audio per surah.',
+      );
+    }
     _repeatPlan = null;
     _completedRepeatPasses = 0;
     await _player.setLoopMode(switch (repeatMode) {
@@ -241,6 +308,11 @@ class QuranAudioHandler extends BaseAudioHandler
   }
 
   Future<void> applyRepeatSettings(RepeatSettings settings) async {
+    if (hasSurahAudioQueue) {
+      throw UnsupportedError(
+        'Pengulangan ayat atau rentang belum tersedia untuk audio per surah.',
+      );
+    }
     if (_tracks.isEmpty) {
       throw StateError('Antrean audio belum tersedia untuk pengaturan ulang.');
     }

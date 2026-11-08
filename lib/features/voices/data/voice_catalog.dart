@@ -17,12 +17,28 @@ enum VoiceStatus {
   );
 }
 
+enum VoiceAudioMode {
+  ayah('ayah'),
+  surah('surah');
+
+  const VoiceAudioMode(this.value);
+
+  final String value;
+
+  static VoiceAudioMode parse(String value) => VoiceAudioMode.values.firstWhere(
+    (mode) => mode.value == value,
+    orElse: () =>
+        throw FormatException('Mode audio qari tidak dikenal: $value'),
+  );
+}
+
 class Voice {
   const Voice({
     required this.id,
     required this.name,
     required this.style,
     required this.status,
+    required this.audioMode,
     required this.editionId,
     required this.bitrateKbps,
     required this.attribution,
@@ -32,6 +48,7 @@ class Voice {
   final String name;
   final String style;
   final VoiceStatus status;
+  final VoiceAudioMode audioMode;
   final String editionId;
   final int bitrateKbps;
   final String attribution;
@@ -41,6 +58,7 @@ class Voice {
     name: json['nama'] as String,
     style: json['gaya'] as String,
     status: VoiceStatus.parse(json['status'] as String),
+    audioMode: VoiceAudioMode.parse(json['audio_mode'] as String),
     editionId: json['edition_id'] as String,
     bitrateKbps: json['bitrate_kbps'] as int,
     attribution: json['attribution'] as String,

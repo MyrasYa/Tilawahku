@@ -8,27 +8,49 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'each qari preview uses the same sample ayah and catalog metadata',
+    'each ayah-based qari preview uses the same sample ayah and metadata',
     () async {
       final voices = await const VoiceCatalog().load();
+      final previewVoices = voices
+          .where((voice) => voice.audioMode == VoiceAudioMode.ayah)
+          .toList();
       final player = _FakeVoicePreviewPlayer();
       final controller = VoicePreviewController(player: player);
       addTearDown(controller.dispose);
 
-      for (final voice in voices) {
+      for (final voice in previewVoices) {
         await controller.play(voice);
       }
 
       expect(player.urls, [
-        for (final voice in voices)
+        for (final voice in previewVoices)
           'https://cdn.islamic.network/quran/audio/'
               '${voice.bitrateKbps}/${voice.editionId}/1.mp3',
       ]);
       expect(VoicePreviewController.sampleGlobalAyah, 1);
-      expect(controller.state.value.voiceId, voices.last.id);
+      expect(controller.state.value.voiceId, previewVoices.last.id);
       expect(controller.state.value.status, VoicePreviewStatus.playing);
     },
   );
+
+  test('surah-based qari cannot use an ayah preview', () async {
+    final voice = (await const VoiceCatalog().load()).singleWhere(
+      (item) => item.audioMode == VoiceAudioMode.surah,
+    );
+    final player = _FakeVoicePreviewPlayer();
+    final controller = VoicePreviewController(player: player);
+    addTearDown(controller.dispose);
+
+    await controller.play(voice);
+
+    expect(player.urls, isEmpty);
+    expect(controller.state.value.voiceId, voice.id);
+    expect(controller.state.value.status, VoicePreviewStatus.error);
+    expect(
+      controller.state.value.error,
+      contains('Preview ayat tidak tersedia untuk qari audio per surah.'),
+    );
+  });
 
   test('changing qari stops current preview before loading the next', () async {
     final voices = await const VoiceCatalog().load();

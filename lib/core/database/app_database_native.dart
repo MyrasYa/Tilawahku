@@ -88,7 +88,10 @@ class AppDatabase {
             as Map<String, dynamic>;
     final configuredVoiceIds = (voiceConfiguration['suara'] as List<dynamic>)
         .map((entry) => entry as Map<String, dynamic>)
-        .where((voice) => voice['status'] == 'aktif')
+        .where(
+          (voice) =>
+              voice['status'] == 'aktif' && voice['audio_mode'] == 'ayah',
+        )
         .map((voice) => voice['id'] as String)
         .toList(growable: false);
     var manifestsComplete = configuredVoiceIds.isNotEmpty;

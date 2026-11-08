@@ -6,6 +6,7 @@
       "nama": "Mahmoud Khalil Al-Husary",
       "gaya": "murattal",
       "status": "aktif",
+      "audio_mode": "ayah",
       "edition_id": "ar.husary",
       "bitrate_kbps": 128,
       "attribution": "Recitation by Mahmoud Khalil Al-Husary; source: AlQuran.cloud"
@@ -15,6 +16,7 @@
       "nama": "Mohamed Siddiq Al-Minshawi",
       "gaya": "murattal",
       "status": "aktif",
+      "audio_mode": "ayah",
       "edition_id": "ar.minshawi",
       "bitrate_kbps": 128,
       "attribution": "Recitation by Mohamed Siddiq Al-Minshawi; source: AlQuran.cloud"
@@ -24,6 +26,7 @@
       "nama": "Mishary Rashid Alafasy",
       "gaya": "murattal",
       "status": "aktif",
+      "audio_mode": "ayah",
       "edition_id": "ar.alafasy",
       "bitrate_kbps": 128,
       "attribution": "Recitation by Mishary Rashid Alafasy; edition ar.alafasy; source: AlQuran.cloud / Islamic Network CDN"
@@ -33,6 +36,7 @@
       "nama": "Abdul Basit Abdus-Samad",
       "gaya": "murattal",
       "status": "aktif",
+      "audio_mode": "ayah",
       "edition_id": "ar.abdulsamad",
       "bitrate_kbps": 64,
       "attribution": "Recitation by Abdul Basit Abdus-Samad; edition ar.abdulsamad; source: AlQuran.cloud / Islamic Network CDN"
@@ -42,6 +46,7 @@
       "nama": "Abdurrahmaan As-Sudais",
       "gaya": "murattal",
       "status": "aktif",
+      "audio_mode": "ayah",
       "edition_id": "ar.abdurrahmaansudais",
       "bitrate_kbps": 192,
       "attribution": "Recitation by Abdurrahmaan As-Sudais; edition ar.abdurrahmaansudais; source: AlQuran.cloud / Islamic Network CDN"
@@ -51,6 +56,7 @@
       "nama": "Hani Rifai",
       "gaya": "murattal",
       "status": "aktif",
+      "audio_mode": "ayah",
       "edition_id": "ar.hanirifai",
       "bitrate_kbps": 192,
       "attribution": "Recitation by Hani Rifai; edition ar.hanirifai; source: AlQuran.cloud / Islamic Network CDN"
@@ -60,6 +66,7 @@
       "nama": "Maher Al Muaiqly",
       "gaya": "murattal",
       "status": "aktif",
+      "audio_mode": "ayah",
       "edition_id": "ar.mahermuaiqly",
       "bitrate_kbps": 128,
       "attribution": "Recitation by Maher Al Muaiqly; edition ar.mahermuaiqly; source: AlQuran.cloud / Islamic Network CDN"
@@ -69,6 +76,7 @@
       "nama": "Muhammad Ayyoub",
       "gaya": "murattal",
       "status": "aktif",
+      "audio_mode": "ayah",
       "edition_id": "ar.muhammadayyoub",
       "bitrate_kbps": 128,
       "attribution": "Recitation by Muhammad Ayyoub; edition ar.muhammadayyoub; source: AlQuran.cloud / Islamic Network CDN"
@@ -78,9 +86,20 @@
       "nama": "Saood bin Ibraaheem Ash-Shuraym",
       "gaya": "murattal",
       "status": "aktif",
+      "audio_mode": "ayah",
       "edition_id": "ar.saoodshuraym",
       "bitrate_kbps": 64,
       "attribution": "Recitation by Saood bin Ibraaheem Ash-Shuraym; edition ar.saoodshuraym; source: AlQuran.cloud / Islamic Network CDN"
+    },
+    {
+      "id": "muhammad-al-luhaidan",
+      "nama": "Muhammad Al-Luhaidan",
+      "gaya": "murattal",
+      "status": "aktif",
+      "audio_mode": "surah",
+      "edition_id": "ar.muhammadalluhaidan",
+      "bitrate_kbps": 128,
+      "attribution": "Recitation by Muhammad al-Luhaidan; edition ar.muhammadalluhaidan; source: AlQuran.cloud API / Islamic Network CDN. Recording-specific license or redistribution permission has not been verified."
     }
   ]
 }

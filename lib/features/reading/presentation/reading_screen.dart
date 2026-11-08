@@ -15,6 +15,7 @@ import '../../player/presentation/sleep_timer_dialog.dart';
 import '../../repeat/domain/repeat_settings.dart';
 import '../../repeat/presentation/repeat_settings_screen.dart';
 import '../../voices/data/voice_catalog.dart';
+import '../../voices/data/surah_audio_catalog.dart';
 import '../data/reading_repository.dart';
 
 class ReadingScreen extends StatefulWidget {
@@ -68,6 +69,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
   int? _lastSavedProgressAyahNumber;
   int? _loadingAyahNumber;
   bool _isPlaying = false;
+  bool _surahAudioQueueLoaded = false;
+  int? _currentSurahNumber;
   bool _isPreparingAll = false;
   bool _isSelectingPlayAll = false;
   double _playbackSpeed = 1.0;
@@ -121,19 +124,37 @@ class _ReadingScreenState extends State<ReadingScreen> {
     final activeMediaItem = handler?.mediaItem.value;
     final queue = handler?.queue.value ?? const <MediaItem>[];
     final voice = _voice;
-    if (adoptQueue &&
-        !_followAudioQueue &&
-        voice != null &&
-        activeMediaItem?.artist == voice.name &&
-        _loadedGlobalNumbers.contains(
-          int.tryParse(activeMediaItem?.id ?? ''),
-        ) &&
-        queue.isNotEmpty) {
-      _followAudioQueue = true;
-      _allAyahsQueueLoaded = queue.length > 1;
+    final activeAudioMode = activeMediaItem?.extras?['audioMode'];
+    final activeVoiceMatches =
+        voice != null && activeMediaItem?.artist == voice.name;
+    if (adoptQueue && !_followAudioQueue && queue.isNotEmpty) {
+      if (activeVoiceMatches &&
+          activeAudioMode == 'surah' &&
+          handler?.hasSurahAudioQueue == true) {
+        _followAudioQueue = true;
+        _surahAudioQueueLoaded = true;
+        _allAyahsQueueLoaded = false;
+      } else if (activeVoiceMatches &&
+          _loadedGlobalNumbers.contains(
+            int.tryParse(activeMediaItem?.id ?? ''),
+          )) {
+        _followAudioQueue = true;
+        _surahAudioQueueLoaded = false;
+        _allAyahsQueueLoaded = queue.length > 1;
+      }
     }
-    final currentAyahNumber = _followAudioQueue
+    final followsSurahQueue =
+        _followAudioQueue &&
+        activeVoiceMatches &&
+        activeAudioMode == 'surah' &&
+        handler?.hasSurahAudioQueue == true;
+    final currentAyahNumber = _followAudioQueue && !followsSurahQueue
         ? int.tryParse(activeMediaItem?.id ?? '')
+        : null;
+    final currentSurahNumber = followsSurahQueue
+        ? int.tryParse(
+            activeMediaItem?.extras?['surahNumber']?.toString() ?? '',
+          )
         : null;
     final isPlaying =
         _followAudioQueue && (handler?.playbackState.value.playing ?? false);
@@ -153,14 +174,22 @@ class _ReadingScreenState extends State<ReadingScreen> {
         unawaited(_saveProgress(voiceId, currentAyahNumber));
       }
     }
+    final surahAudioQueueLoaded =
+        _followAudioQueue &&
+        handler?.hasSurahAudioQueue == true &&
+        voice?.audioMode == VoiceAudioMode.surah;
     if (currentAyahNumber == _currentAyahNumber &&
+        currentSurahNumber == _currentSurahNumber &&
         isPlaying == _isPlaying &&
+        surahAudioQueueLoaded == _surahAudioQueueLoaded &&
         playbackSpeed == _playbackSpeed) {
       return;
     }
     setState(() {
       _currentAyahNumber = currentAyahNumber;
+      _currentSurahNumber = currentSurahNumber;
       _isPlaying = isPlaying;
+      _surahAudioQueueLoaded = surahAudioQueueLoaded;
       _playbackSpeed = playbackSpeed;
     });
   }
@@ -531,6 +560,129 @@ class _ReadingScreenState extends State<ReadingScreen> {
     }
   }
 
+  Future<void> _toggleSurahAudioPlayback() async {
+    if (kIsWeb) {
+      _showAudioMessage('Audio dinonaktifkan di Web preview.');
+      return;
+    }
+
+    final handler = QuranAudioHandler.instance;
+    final voice = _voice;
+    if (handler == null ||
+        voice == null ||
+        voice.status != VoiceStatus.active ||
+        voice.audioMode != VoiceAudioMode.surah) {
+      _showAudioMessage('Pilih qari audio per surah terlebih dahulu.');
+      return;
+    }
+
+    final selectedSurah = _displayedSurahNumber;
+    if (handler.hasSurahAudioQueue &&
+        handler.mediaItem.value?.extras?['voiceId'] == voice.id) {
+      try {
+        final targetIndex = selectedSurah == null ? null : selectedSurah - 1;
+        if (targetIndex != null && targetIndex != handler.currentIndex) {
+          await handler.skipToQueueItem(targetIndex);
+          await handler.play();
+        } else if (handler.playbackState.value.playing) {
+          await handler.pause();
+        } else {
+          _startPlayback(
+            handler,
+            errorMessage: 'Tidak dapat melanjutkan audio per surah.',
+          );
+        }
+      } catch (error) {
+        _showAudioMessage('Gagal mengubah pemutaran surah: $error');
+      }
+      return;
+    }
+
+    if (selectedSurah == null) {
+      _showAudioMessage(
+        'Buka tampilan surah terlebih dahulu untuk memutar audio utuh.',
+      );
+      return;
+    }
+
+    setState(() {
+      _isPreparingAll = true;
+      _preparingAyah = 0;
+      _preparingTotal = 0;
+      _error = null;
+    });
+    try {
+      final sources = await SurahAudioCatalog().load(voice);
+      final surahs = await widget.repository.getSurahs();
+      if (sources.length != surahs.length || surahs.length != 114) {
+        throw StateError(
+          'Pemetaan nama dan audio surah tidak lengkap '
+          '(${sources.length}/${surahs.length}).',
+        );
+      }
+      if (!mounted) return;
+      final localizedSources = List.generate(
+        sources.length,
+        (index) => SurahAudioSource(
+          number: sources[index].number,
+          name: surahs[index].nameIndonesian,
+          uri: sources[index].uri,
+        ),
+        growable: false,
+      );
+      await handler.loadSurahAudio(
+        localizedSources,
+        voiceName: voice.name,
+        voiceId: voice.id,
+        initialTrack: selectedSurah - 1,
+      );
+      _followAudioQueue = true;
+      _allAyahsQueueLoaded = false;
+      if (mounted) {
+        _syncPlaybackIndicator();
+        _startPlayback(
+          handler,
+          errorMessage: 'Tidak dapat memutar audio surah.',
+        );
+      }
+    } catch (error) {
+      _showAudioMessage('Tidak dapat menyiapkan audio per surah: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPreparingAll = false;
+          _preparingAyah = 0;
+          _preparingTotal = 0;
+        });
+      }
+    }
+  }
+
+  Future<void> _stopSurahAudio() async {
+    final handler = QuranAudioHandler.instance;
+    if (handler == null) return;
+    try {
+      await handler.stop();
+    } catch (error) {
+      _showAudioMessage('Gagal menghentikan audio surah: $error');
+    }
+  }
+
+  Future<void> _skipSurahAudio(int direction) async {
+    final handler = QuranAudioHandler.instance;
+    if (handler == null || !handler.hasSurahAudioQueue) return;
+    final currentIndex = handler.currentIndex;
+    if (currentIndex == null) return;
+    final targetIndex = currentIndex + direction;
+    if (targetIndex < 0 || targetIndex >= handler.queue.value.length) return;
+    try {
+      await handler.skipToQueueItem(targetIndex);
+      await handler.play();
+    } catch (error) {
+      _showAudioMessage('Gagal berpindah surah: $error');
+    }
+  }
+
   Future<void> _togglePlayAllAyahs({
     bool chooseSection = false,
     _PlayAllSelection? selectionToPlay,
@@ -539,6 +691,10 @@ class _ReadingScreenState extends State<ReadingScreen> {
       _showAudioMessage(
         'Audio belum tersedia secara lokal; pemutaran dinonaktifkan di Web preview.',
       );
+      return;
+    }
+    if (_voice?.audioMode == VoiceAudioMode.surah) {
+      await _toggleSurahAudioPlayback();
       return;
     }
 
@@ -720,6 +876,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
       );
       return;
     }
+    if (handler.hasSurahAudioQueue) {
+      _showAudioMessage(
+        'Pengulangan ayat atau rentang belum tersedia untuk audio per surah.',
+      );
+      return;
+    }
     final currentIndex = handler.currentIndex;
     if (currentIndex == null ||
         currentIndex < 0 ||
@@ -758,7 +920,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   Future<void> _configurePlaybackSpeed() async {
     final handler = QuranAudioHandler.instance;
-    if (kIsWeb || handler == null || handler.tracks.isEmpty) {
+    if (kIsWeb || handler == null || !handler.hasQueue) {
       _showAudioMessage('Mulai pemutaran audio sebelum mengatur kecepatan.');
       return;
     }
@@ -779,7 +941,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   Future<void> _configureSleepTimer() async {
     final handler = QuranAudioHandler.instance;
-    if (kIsWeb || handler == null || handler.tracks.isEmpty) {
+    if (kIsWeb || handler == null || !handler.hasQueue) {
       _showAudioMessage('Mulai pemutaran audio sebelum mengatur sleep timer.');
       return;
     }
@@ -852,8 +1014,169 @@ class _ReadingScreenState extends State<ReadingScreen> {
     );
   }
 
+  Widget _buildSurahAudioPlayer() {
+    final handler = QuranAudioHandler.instance;
+    final voice = _voice!;
+    final currentItem = handler?.mediaItem.value;
+    final queueMatchesVoice =
+        _surahAudioQueueLoaded &&
+        handler?.hasSurahAudioQueue == true &&
+        currentItem?.extras?['voiceId'] == voice.id;
+    final currentIndex = handler?.currentIndex;
+    final currentTitle = queueMatchesVoice
+        ? currentItem?.title
+        : _displayedSurahNumber == null
+        ? 'Pilih tampilan surah untuk memulai'
+        : 'Surah $_displayedSurahNumber';
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.library_music_rounded, color: AppColors.gold),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    voice.name,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const Chip(label: Text('Mode Audio Per Surah')),
+              ],
+            ),
+            Text(
+              currentTitle ?? voice.name,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Qari ini menggunakan rekaman satu surah secara utuh. '
+              'Pengulangan ayat atau rentang ayat belum tersedia untuk sumber audio ini.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            if (queueMatchesVoice) ...[
+              const SizedBox(height: 8),
+              StreamBuilder<Duration?>(
+                stream: handler!.durationStream,
+                initialData: handler.duration,
+                builder: (context, durationSnapshot) {
+                  final duration = durationSnapshot.data;
+                  return StreamBuilder<Duration>(
+                    stream: handler.positionStream,
+                    initialData: handler.position,
+                    builder: (context, positionSnapshot) {
+                      final position = positionSnapshot.data ?? Duration.zero;
+                      final hasDuration =
+                          duration != null && duration.inMilliseconds > 0;
+                      return Column(
+                        children: [
+                          if (hasDuration)
+                            Slider(
+                              value: position.inMilliseconds
+                                  .clamp(0, duration.inMilliseconds)
+                                  .toDouble(),
+                              max: duration.inMilliseconds.toDouble(),
+                              onChanged: (value) => unawaited(
+                                handler
+                                    .seek(Duration(milliseconds: value.round()))
+                                    .catchError((Object error) {
+                                      _showAudioMessage(
+                                        'Gagal mengubah posisi audio: $error',
+                                      );
+                                    }),
+                              ),
+                            )
+                          else
+                            const LinearProgressIndicator(),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(_formatAudioDuration(position)),
+                              Text(
+                                hasDuration
+                                    ? _formatAudioDuration(duration)
+                                    : '--:--',
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    tooltip: 'Surah sebelumnya',
+                    onPressed: currentIndex != null && currentIndex > 0
+                        ? () => _skipSurahAudio(-1)
+                        : null,
+                    icon: const Icon(Icons.skip_previous_rounded),
+                  ),
+                  IconButton.filled(
+                    tooltip: _isPlaying ? 'Jeda' : 'Lanjutkan',
+                    onPressed: _toggleSurahAudioPlayback,
+                    icon: Icon(
+                      _isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Stop',
+                    onPressed: _stopSurahAudio,
+                    icon: const Icon(Icons.stop_rounded),
+                  ),
+                  IconButton(
+                    tooltip: 'Surah berikutnya',
+                    onPressed:
+                        currentIndex != null &&
+                            currentIndex < handler.queue.value.length - 1
+                        ? () => _skipSurahAudio(1)
+                        : null,
+                    icon: const Icon(Icons.skip_next_rounded),
+                  ),
+                ],
+              ),
+            ] else ...[
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: _displayedSurahNumber == null
+                    ? null
+                    : _toggleSurahAudioPlayback,
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Putar surah utuh'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatAudioDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds.remainder(60);
+    final hours = duration.inHours;
+    if (hours > 0) {
+      return '$hours:${(minutes % 60).toString().padLeft(2, '0')}:'
+          '${seconds.toString().padLeft(2, '0')}';
+    }
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
   Widget _buildAyahCard(AyahEntry ayah) => _AyahCard(
     ayah: ayah,
+    showAyahAudio: _voice?.audioMode != VoiceAudioMode.surah,
     showTranslation: _showTranslation,
     textScale: _arabicTextScale,
     isBookmarked: _bookmarkedNumbers.contains(ayah.globalNumber),
@@ -879,6 +1202,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isSurahAudioMode = _voice?.audioMode == VoiceAudioMode.surah;
     final title = _displayedPageNumber != null
         ? 'Halaman $_displayedPageNumber'
         : _displayedJuzNumber == null
@@ -894,19 +1218,29 @@ class _ReadingScreenState extends State<ReadingScreen> {
             icon: const Icon(Icons.find_in_page_outlined),
           ),
           IconButton.filled(
-            tooltip:
-                '${_isPreparingAll || _isSelectingPlayAll
-                    ? 'Menyiapkan bacaan'
-                    : _allAyahsQueueLoaded
-                    ? _isPlaying
-                          ? 'Jeda semua ayat'
-                          : 'Lanjutkan semua ayat'
-                    : 'Putar semua ayat'}. '
-                'Tekan lama untuk memilih surah atau juz.',
+            tooltip: isSurahAudioMode
+                ? _isPreparingAll
+                      ? 'Memuat audio surah'
+                      : _surahAudioQueueLoaded
+                      ? _isPlaying
+                            ? 'Jeda audio surah'
+                            : 'Lanjutkan audio surah'
+                      : 'Putar surah utuh'
+                : '${_isPreparingAll || _isSelectingPlayAll
+                          ? 'Menyiapkan bacaan'
+                          : _allAyahsQueueLoaded
+                          ? _isPlaying
+                                ? 'Jeda semua ayat'
+                                : 'Lanjutkan semua ayat'
+                          : 'Putar semua ayat'}. '
+                      'Tekan lama untuk memilih surah atau juz.',
             onPressed: _isPreparingAll || _isSelectingPlayAll
                 ? null
+                : isSurahAudioMode
+                ? _toggleSurahAudioPlayback
                 : _togglePlayAllAyahs,
-            onLongPress: _isPreparingAll || _isSelectingPlayAll
+            onLongPress:
+                isSurahAudioMode || _isPreparingAll || _isSelectingPlayAll
                 ? null
                 : () => _togglePlayAllAyahs(chooseSection: true),
             style: IconButton.styleFrom(
@@ -923,27 +1257,33 @@ class _ReadingScreenState extends State<ReadingScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
+                : isSurahAudioMode
+                ? Icon(
+                    _isPlaying && _surahAudioQueueLoaded
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
+                  )
                 : _allAyahsQueueLoaded
                 ? Icon(
                     _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                   )
                 : const Icon(Icons.playlist_play_rounded),
           ),
-          IconButton(
-            tooltip: _allAyahsQueueLoaded
-                ? 'Atur pengulangan audio'
-                : 'Putar semua ayat untuk mengatur pengulangan',
-            onPressed: !kIsWeb && _allAyahsQueueLoaded
-                ? _configureRepeat
-                : null,
-            icon: const Icon(Icons.repeat_rounded),
-          ),
+          if (!isSurahAudioMode)
+            IconButton(
+              tooltip: _allAyahsQueueLoaded
+                  ? 'Atur pengulangan audio'
+                  : 'Putar semua ayat untuk mengatur pengulangan',
+              onPressed: !kIsWeb && _allAyahsQueueLoaded
+                  ? _configureRepeat
+                  : null,
+              icon: const Icon(Icons.repeat_rounded),
+            ),
           Tooltip(
             message: 'Kecepatan pemutaran',
             child: TextButton(
               onPressed:
-                  !kIsWeb &&
-                      (QuranAudioHandler.instance?.tracks.isNotEmpty ?? false)
+                  !kIsWeb && (QuranAudioHandler.instance?.hasQueue ?? false)
                   ? _configurePlaybackSpeed
                   : null,
               child: Text(
@@ -956,8 +1296,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
                 ? 'Atur sleep timer'
                 : 'Sleep timer ${SleepTimerDialog.formatRemaining(_sleepTimerRemaining)}',
             onPressed:
-                !kIsWeb &&
-                    (QuranAudioHandler.instance?.tracks.isNotEmpty ?? false)
+                !kIsWeb && (QuranAudioHandler.instance?.hasQueue ?? false)
                 ? _configureSleepTimer
                 : null,
             icon: _sleepTimerRemaining == null
@@ -1005,6 +1344,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
                 ),
               ),
             ),
+          if (isSurahAudioMode) _buildSurahAudioPlayer(),
           if (_isPreparingAll)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -1024,7 +1364,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Menyiapkan bacaan',
+                              isSurahAudioMode
+                                  ? 'Memuat katalog audio surah'
+                                  : 'Menyiapkan bacaan',
                               style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
@@ -1125,6 +1467,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
 class _AyahCard extends StatelessWidget {
   const _AyahCard({
     required this.ayah,
+    required this.showAyahAudio,
     required this.showTranslation,
     required this.textScale,
     required this.isBookmarked,
@@ -1136,6 +1479,7 @@ class _AyahCard extends StatelessWidget {
   });
 
   final AyahEntry ayah;
+  final bool showAyahAudio;
   final bool showTranslation;
   final double textScale;
   final bool isBookmarked;
@@ -1172,26 +1516,27 @@ class _AyahCard extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton(
-                tooltip: isPlaying ? 'Jeda ayat' : 'Putar ayat',
-                onPressed: isLoading || playbackLocked ? null : onPlay,
-                icon: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: ScaleTransition(scale: animation, child: child),
-                  ),
-                  child: Icon(
-                    key: ValueKey(isPlaying ? 'pause' : 'play'),
-                    isPlaying
-                        ? Icons.pause_circle_filled_rounded
-                        : Icons.play_circle_fill_rounded,
-                    color: AppColors.gold,
+              if (showAyahAudio)
+                IconButton(
+                  tooltip: isPlaying ? 'Jeda ayat' : 'Putar ayat',
+                  onPressed: isLoading || playbackLocked ? null : onPlay,
+                  icon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(scale: animation, child: child),
+                    ),
+                    child: Icon(
+                      key: ValueKey(isPlaying ? 'pause' : 'play'),
+                      isPlaying
+                          ? Icons.pause_circle_filled_rounded
+                          : Icons.play_circle_fill_rounded,
+                      color: AppColors.gold,
+                    ),
                   ),
                 ),
-              ),
               IconButton(
                 tooltip: isBookmarked ? 'Hapus bookmark' : 'Simpan bookmark',
                 onPressed: onToggleBookmark,

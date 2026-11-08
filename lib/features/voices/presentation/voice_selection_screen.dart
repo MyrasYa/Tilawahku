@@ -153,6 +153,14 @@ class _VoiceSelectionScreenState extends State<VoiceSelectionScreen> {
         return;
       }
 
+      if (selectedVoice.audioMode == VoiceAudioMode.surah) {
+        await _voiceRepository.save(selectedVoice);
+        await widget.preferences.setSelectedVoiceId(voiceId);
+        if (!mounted) return;
+        _leaveSelection(voiceId);
+        return;
+      }
+
       final previousVoiceId = await widget.preferences.selectedVoiceId;
       if (!mounted) return;
       if (previousVoiceId == voiceId) {
@@ -433,6 +441,7 @@ class _VoiceCard extends StatelessWidget {
     final unavailable = voice.status != VoiceStatus.active;
     final isCurrentPreview = previewState.voiceId == voice.id;
     return Card(
+      key: ValueKey('voice-selection-${voice.id}'),
       margin: const EdgeInsets.only(top: 12),
       child: InkWell(
         onTap: onSelect,
@@ -462,6 +471,35 @@ class _VoiceCard extends StatelessWidget {
                       unavailable ? 'Segera hadir' : voice.style,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: voice.audioMode == VoiceAudioMode.surah
+                            ? Theme.of(context).colorScheme.tertiaryContainer
+                            : Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        voice.audioMode == VoiceAudioMode.surah
+                            ? 'Audio Per Surah'
+                            : 'Audio Per Ayat',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (voice.audioMode == VoiceAudioMode.surah) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Memutar satu surah secara utuh. Pengulangan ayat '
+                        'atau rentang ayat belum tersedia untuk sumber audio ini.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                     if (isCurrentPreview &&
                         previewState.status == VoicePreviewStatus.error) ...[
                       const SizedBox(height: 4),
@@ -475,31 +513,32 @@ class _VoiceCard extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                key: ValueKey('voice-preview-${voice.id}'),
-                tooltip:
-                    isCurrentPreview &&
-                        (previewState.status == VoicePreviewStatus.playing ||
-                            previewState.status == VoicePreviewStatus.loading)
-                    ? 'Hentikan preview ${voice.name}'
-                    : 'Dengarkan contoh ${voice.name}',
-                onPressed: previewEnabled ? onPreview : null,
-                icon:
-                    isCurrentPreview &&
-                        previewState.status == VoicePreviewStatus.loading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        isCurrentPreview &&
-                                previewState.status ==
-                                    VoicePreviewStatus.playing
-                            ? Icons.stop_circle_outlined
-                            : Icons.play_circle_outline_rounded,
-                      ),
-              ),
+              if (voice.audioMode == VoiceAudioMode.ayah)
+                IconButton(
+                  key: ValueKey('voice-preview-${voice.id}'),
+                  tooltip:
+                      isCurrentPreview &&
+                          (previewState.status == VoicePreviewStatus.playing ||
+                              previewState.status == VoicePreviewStatus.loading)
+                      ? 'Hentikan preview ${voice.name}'
+                      : 'Dengarkan contoh ${voice.name}',
+                  onPressed: previewEnabled ? onPreview : null,
+                  icon:
+                      isCurrentPreview &&
+                          previewState.status == VoicePreviewStatus.loading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          isCurrentPreview &&
+                                  previewState.status ==
+                                      VoicePreviewStatus.playing
+                              ? Icons.stop_circle_outlined
+                              : Icons.play_circle_outline_rounded,
+                        ),
+                ),
               if (selected)
                 const Icon(
                   Icons.check_circle_rounded,

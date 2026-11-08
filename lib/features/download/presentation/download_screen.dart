@@ -62,6 +62,14 @@ class _DownloadScreenState extends State<DownloadScreen> {
           'Suara terpilih tidak tersedia atau telah dinonaktifkan.',
         ),
       );
+      if (voice.audioMode == VoiceAudioMode.surah) {
+        if (!mounted) return;
+        setState(() {
+          _selectedVoice = voice;
+          _loading = false;
+        });
+        return;
+      }
       await _downloadManager.recoverInterruptedDownloads(voice.id);
       final packages = await _packageRepository.getPackages(voice.id);
       if (packages.length != 30) {
@@ -396,13 +404,15 @@ class _DownloadScreenState extends State<DownloadScreen> {
     child: Scaffold(
       appBar: AppBar(
         title: const Text('Unduhan audio'),
-        bottom: TabBar(
-          onTap: _onTabSelected,
-          tabs: [
-            Tab(text: 'Juz'),
-            Tab(text: 'Surah'),
-          ],
-        ),
+        bottom: _selectedVoice?.audioMode == VoiceAudioMode.surah
+            ? null
+            : TabBar(
+                onTap: _onTabSelected,
+                tabs: [
+                  Tab(text: 'Juz'),
+                  Tab(text: 'Surah'),
+                ],
+              ),
       ),
       body: kIsWeb
           ? const Center(
@@ -423,6 +433,17 @@ class _DownloadScreenState extends State<DownloadScreen> {
               action: TextButton(
                 onPressed: _load,
                 child: const Text('Coba lagi'),
+              ),
+            )
+          : _selectedVoice?.audioMode == VoiceAudioMode.surah
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Audio Muhammad Al-Luhaidan diputar melalui streaming per '
+                  'surah. Unduhan offline belum tersedia untuk sumber ini.',
+                  textAlign: TextAlign.center,
+                ),
               ),
             )
           : _buildPackages(context),

@@ -22,12 +22,22 @@ void main() {
   test('voice catalog reads the bundled configuration', () async {
     final voices = await const VoiceCatalog().load();
 
-    expect(voices, hasLength(9));
+    expect(voices, hasLength(10));
     expect(voices.first.id, 'husary');
     expect(voices[1].id, 'minshawi');
     expect(voices[2].id, 'alafasy');
     expect(voices[2].editionId, 'ar.alafasy');
     expect(voices.every((voice) => voice.status == VoiceStatus.active), isTrue);
+    expect(
+      voices.take(9).every((voice) => voice.audioMode == VoiceAudioMode.ayah),
+      isTrue,
+    );
+    final luhaidan = voices.singleWhere(
+      (voice) => voice.id == 'muhammad-al-luhaidan',
+    );
+    expect(luhaidan.audioMode, VoiceAudioMode.surah);
+    expect(luhaidan.editionId, 'ar.muhammadalluhaidan');
+    expect(luhaidan.bitrateKbps, 128);
     final expectedAdditions = {
       'abdulbasit': ('ar.abdulsamad', 64),
       'sudais': ('ar.abdurrahmaansudais', 192),

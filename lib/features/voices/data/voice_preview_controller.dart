@@ -89,6 +89,11 @@ class VoicePreviewController {
     if (voice.status != VoiceStatus.active) {
       throw StateError('Preview tidak tersedia untuk qari ini.');
     }
+    if (voice.audioMode != VoiceAudioMode.ayah) {
+      throw StateError(
+        'Preview ayat tidak tersedia untuk qari audio per surah.',
+      );
+    }
     if (voice.editionId.trim().isEmpty || voice.bitrateKbps <= 0) {
       throw FormatException('Metadata sumber audio qari tidak valid.');
     }

@@ -44,6 +44,13 @@ authorized Kemenag source. The app owner has stated that written permission is
 available, but the permission and dataset-to-edition match are not verified by
 this repository. Confirm those before distribution.
 
+Muhammad al-Luhaidan is streamed as complete surah files from the
+`ar.muhammadalluhaidan` AlQuran.cloud edition through the Islamic Network CDN.
+Its API currently maps all 114 surahs to 128 kbps MP3 URLs. Ayah/range repeat
+and offline downloads are not available for this source. The license or
+redistribution permission for the specific recording has not been verified;
+confirm it before distributing the audio.
+
 The Latin transliteration is displayed below each Arabic ayah and comes from
 AlQuran.cloud's `en.transliteration` edition.
 
