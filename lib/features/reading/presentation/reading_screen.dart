@@ -26,6 +26,8 @@ class ReadingScreen extends StatefulWidget {
     this.juzNumber,
     this.pageNumber,
     this.startingAyah,
+    this.saveReadingProgress = true,
+    this.preserveExistingAudioQueue = false,
   }) : assert(surahNumber != null || juzNumber != null || pageNumber != null);
 
   final ReadingRepository repository;
@@ -34,6 +36,8 @@ class ReadingScreen extends StatefulWidget {
   final int? juzNumber;
   final int? pageNumber;
   final int? startingAyah;
+  final bool saveReadingProgress;
+  final bool preserveExistingAudioQueue;
 
   @override
   State<ReadingScreen> createState() => _ReadingScreenState();
@@ -140,6 +144,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       _scrollToAyah(currentAyahNumber);
     }
     if (isPlaying &&
+        widget.saveReadingProgress &&
         currentAyahNumber != null &&
         currentAyahNumber != _lastSavedProgressAyahNumber) {
       _lastSavedProgressAyahNumber = currentAyahNumber;
@@ -161,6 +166,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
   }
 
   Future<void> _saveProgress(String voiceId, int globalAyahNumber) async {
+    if (!widget.saveReadingProgress) return;
     try {
       await widget.repository.saveProgress(
         voiceId: voiceId,
@@ -197,6 +203,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
   }
 
   void _saveInitialProgress() {
+    if (!widget.saveReadingProgress) return;
     final voiceId = _progressVoiceId;
     if (voiceId == null || _loadedAyahs.isEmpty) return;
     final initialIndex = _startingAyah == null
@@ -241,6 +248,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   void _scheduleVisibleProgressSave() {
     _progressSaveDebounce?.cancel();
+    if (!widget.saveReadingProgress) return;
     final voiceId = _progressVoiceId;
     if (voiceId == null || _loadedAyahs.isEmpty) return;
 
@@ -424,6 +432,48 @@ class _ReadingScreenState extends State<ReadingScreen> {
         voice == null ||
         voice.status != VoiceStatus.active) {
       _showAudioMessage('Pilih qari aktif terlebih dahulu di Pengaturan.');
+      return;
+    }
+
+    if (widget.preserveExistingAudioQueue && handler.tracks.isNotEmpty) {
+      final queue = handler.queue.value;
+      var existingIndex = -1;
+      for (
+        var index = 0;
+        index < handler.tracks.length && index < queue.length;
+        index++
+      ) {
+        if (handler.tracks[index].globalNumber == ayah.globalNumber &&
+            queue[index].extras?['voiceId'] == voice.id) {
+          existingIndex = index;
+          break;
+        }
+      }
+      if (existingIndex < 0) {
+        _showAudioMessage(
+          'Pemutaran hafalan tidak mengganti antrean audio yang sedang ada. '
+          'Selesaikan atau hentikan antrean tersebut terlebih dahulu.',
+        );
+        return;
+      }
+      try {
+        final currentMediaId = handler.mediaItem.value?.id;
+        if (currentMediaId == '${ayah.globalNumber}') {
+          if (handler.playbackState.value.playing) {
+            await handler.pause();
+          } else {
+            _startPlayback(handler);
+          }
+          return;
+        }
+        await handler.skipToQueueItem(existingIndex);
+        _followAudioQueue = true;
+        _allAyahsQueueLoaded = handler.tracks.length > 1;
+        _syncPlaybackIndicator();
+        _startPlayback(handler);
+      } catch (error) {
+        _showAudioMessage('Tidak dapat melanjutkan audio dari antrean: $error');
+      }
       return;
     }
 

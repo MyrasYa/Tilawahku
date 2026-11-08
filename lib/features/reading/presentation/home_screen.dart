@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../app/app_theme.dart';
 import '../../../core/preferences/app_preferences.dart';
 import '../../download/presentation/download_screen.dart';
+import '../../memorization/data/memorization_repository.dart';
+import '../../memorization/presentation/memorization_home_screen.dart';
 import '../../player/data/quran_audio_handler.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../data/reading_repository.dart';
@@ -18,11 +20,13 @@ class HomeScreen extends StatefulWidget {
     required this.preferences,
     required this.onSetDarkMode,
     this.repository,
+    this.memorizationRepository,
   });
 
   final AppPreferences preferences;
   final ValueChanged<bool> onSetDarkMode;
   final ReadingRepository? repository;
+  final MemorizationRepository? memorizationRepository;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -30,6 +34,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final ReadingRepository _repository;
+  late final MemorizationRepository _memorizationRepository;
   late Future<List<Surah>> _surahs;
   String? _voiceId;
   String? _loadError;
@@ -40,6 +45,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? ReadingRepository();
+    _memorizationRepository =
+        widget.memorizationRepository ??
+        MemorizationRepository(readingRepository: _repository);
     _surahs = _repository.getSurahs();
     _loadVoice();
   }
@@ -223,6 +231,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             icon: const Icon(Icons.bookmarks_outlined),
+          ),
+          IconButton(
+            tooltip: 'Hafalan Al-Qur’an',
+            onPressed: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => MemorizationHomeScreen(
+                  repository: _memorizationRepository,
+                  readingRepository: _repository,
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.psychology_alt_outlined),
           ),
           IconButton(
             tooltip: 'Unduhan',

@@ -264,6 +264,38 @@ class ReadingRepository {
     return rows.map(AyahEntry.fromMap).toList(growable: false);
   }
 
+  Future<List<AyahEntry>> getAyahsBetweenGlobalNumbers(
+    int startGlobalNumber,
+    int endGlobalNumber,
+  ) async {
+    if (startGlobalNumber < 1 ||
+        endGlobalNumber < startGlobalNumber ||
+        endGlobalNumber > 6236) {
+      throw RangeError(
+        'Rentang ayat harus berada di antara 1 dan 6236 dan berurutan.',
+      );
+    }
+
+    final db = await _appDatabase.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT ayah.*, transliterasi.teks_latin, terjemah.teks_id,
+             surah.nama_id AS nama_surah_id
+      FROM ayah
+      JOIN surah ON surah.id = ayah.surah
+      LEFT JOIN terjemah USING (nomor_global)
+      LEFT JOIN transliterasi USING (nomor_global)
+      WHERE ayah.nomor_global BETWEEN ? AND ?
+      ORDER BY ayah.nomor_global
+      ''',
+      [startGlobalNumber, endGlobalNumber],
+    );
+    if (rows.length != endGlobalNumber - startGlobalNumber + 1) {
+      throw StateError('Data ayat pada rentang yang dipilih tidak lengkap.');
+    }
+    return rows.map(AyahEntry.fromMap).toList(growable: false);
+  }
+
   Future<List<AyahEntry>> getAyahsForPage(int pageNumber) async {
     final db = await _appDatabase.database;
     final rows = await db.rawQuery(

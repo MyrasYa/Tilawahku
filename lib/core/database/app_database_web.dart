@@ -36,6 +36,12 @@ class AppDatabase {
           if (oldVersion < 4) {
             await db.execute(DatabaseSchema.createTransliterasi);
           }
+          if (oldVersion < 5) {
+            for (final statement
+                in DatabaseSchema.memorizationCreateStatements) {
+              await db.execute(statement);
+            }
+          }
         },
       ),
     );
