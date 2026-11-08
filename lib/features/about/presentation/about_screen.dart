@@ -47,10 +47,14 @@ class AboutScreen extends StatelessWidget {
         _SourceItem(
           title: 'Audio bacaan',
           detail:
-              'Audio dibawakan oleh Mahmoud Khalil Al-Husary, Mohamed '
-              'Siddiq Al-Minshawi, dan Mishary Rashid Alafasy. '
-              'Sumber audio: AlQuran.cloud / Islamic Network CDN. Audio '
-              'diunduh per ayat dan dapat diputar kembali tanpa internet.',
+              'Pilihan qari mencakup Mahmoud Khalil Al-Husary, Mohamed '
+              'Siddiq Al-Minshawi, Mishary Rashid Alafasy, Abdul Basit '
+              'Abdus-Samad, Abdurrahmaan As-Sudais, Hani Rifai, Maher Al '
+              'Muaiqly, Muhammad Ayyoub, dan Saood bin Ibraaheem '
+              'Ash-Shuraym. Edition ID berasal dari katalog audio '
+              'AlQuran.cloud; audio per ayat disajikan melalui Islamic '
+              'Network CDN. Audio yang diunduh dapat diputar kembali tanpa '
+              'internet.',
         ),
         _SourceItem(
           title: 'Privasi',

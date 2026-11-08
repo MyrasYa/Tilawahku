@@ -27,6 +27,60 @@
       "edition_id": "ar.alafasy",
       "bitrate_kbps": 128,
       "attribution": "Recitation by Mishary Rashid Alafasy; edition ar.alafasy; source: AlQuran.cloud / Islamic Network CDN"
+    },
+    {
+      "id": "abdulbasit",
+      "nama": "Abdul Basit Abdus-Samad",
+      "gaya": "murattal",
+      "status": "aktif",
+      "edition_id": "ar.abdulsamad",
+      "bitrate_kbps": 64,
+      "attribution": "Recitation by Abdul Basit Abdus-Samad; edition ar.abdulsamad; source: AlQuran.cloud / Islamic Network CDN"
+    },
+    {
+      "id": "sudais",
+      "nama": "Abdurrahmaan As-Sudais",
+      "gaya": "murattal",
+      "status": "aktif",
+      "edition_id": "ar.abdurrahmaansudais",
+      "bitrate_kbps": 192,
+      "attribution": "Recitation by Abdurrahmaan As-Sudais; edition ar.abdurrahmaansudais; source: AlQuran.cloud / Islamic Network CDN"
+    },
+    {
+      "id": "hani-rifai",
+      "nama": "Hani Rifai",
+      "gaya": "murattal",
+      "status": "aktif",
+      "edition_id": "ar.hanirifai",
+      "bitrate_kbps": 192,
+      "attribution": "Recitation by Hani Rifai; edition ar.hanirifai; source: AlQuran.cloud / Islamic Network CDN"
+    },
+    {
+      "id": "maher-muaiqly",
+      "nama": "Maher Al Muaiqly",
+      "gaya": "murattal",
+      "status": "aktif",
+      "edition_id": "ar.mahermuaiqly",
+      "bitrate_kbps": 128,
+      "attribution": "Recitation by Maher Al Muaiqly; edition ar.mahermuaiqly; source: AlQuran.cloud / Islamic Network CDN"
+    },
+    {
+      "id": "muhammad-ayyoub",
+      "nama": "Muhammad Ayyoub",
+      "gaya": "murattal",
+      "status": "aktif",
+      "edition_id": "ar.muhammadayyoub",
+      "bitrate_kbps": 128,
+      "attribution": "Recitation by Muhammad Ayyoub; edition ar.muhammadayyoub; source: AlQuran.cloud / Islamic Network CDN"
+    },
+    {
+      "id": "saood-shuraym",
+      "nama": "Saood bin Ibraaheem Ash-Shuraym",
+      "gaya": "murattal",
+      "status": "aktif",
+      "edition_id": "ar.saoodshuraym",
+      "bitrate_kbps": 64,
+      "attribution": "Recitation by Saood bin Ibraaheem Ash-Shuraym; edition ar.saoodshuraym; source: AlQuran.cloud / Islamic Network CDN"
     }
   ]
 }

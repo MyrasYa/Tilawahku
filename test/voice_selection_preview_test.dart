@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tilawahku/core/preferences/app_preferences.dart';
+import 'package:tilawahku/features/voices/data/voice_audio_source.dart';
 import 'package:tilawahku/features/voices/data/voice_preview_controller.dart';
 import 'package:tilawahku/features/voices/presentation/voice_selection_screen.dart';
 
@@ -32,10 +33,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('voice-preview-husary')),
-      );
-      await tester.tap(find.byKey(const ValueKey('voice-preview-husary')));
+      final husaryPreview = find.byKey(const ValueKey('voice-preview-husary'));
+      await tester.ensureVisible(husaryPreview);
+      await tester.tap(husaryPreview);
       await tester.pump();
 
       expect(controller.state.value.status, VoicePreviewStatus.playing);
@@ -51,7 +51,34 @@ void main() {
       );
 
       player.setUrlError = null;
-      await tester.tap(find.byKey(const ValueKey('voice-preview-husary')));
+      const additions = {
+        'abdulbasit': ('ar.abdulsamad', 64),
+        'sudais': ('ar.abdurrahmaansudais', 192),
+        'hani-rifai': ('ar.hanirifai', 192),
+        'maher-muaiqly': ('ar.mahermuaiqly', 128),
+        'muhammad-ayyoub': ('ar.muhammadayyoub', 128),
+        'saood-shuraym': ('ar.saoodshuraym', 64),
+      };
+      for (final entry in additions.entries) {
+        final previewButton = find.byKey(
+          ValueKey('voice-preview-${entry.key}'),
+        );
+        await tester.ensureVisible(previewButton);
+        await tester.tap(previewButton);
+        await tester.pump();
+        expect(
+          player.urls.last,
+          '${VoiceAudioSource.baseUrl}/${entry.value.$2}/'
+          '${entry.value.$1}/1.mp3',
+        );
+      }
+
+      await tester.scrollUntilVisible(
+        husaryPreview,
+        -500,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(husaryPreview);
       await tester.pump();
       expect(controller.state.value.status, VoicePreviewStatus.playing);
       final urlsBeforeMainPlayback = List<String>.of(player.urls);

@@ -13,6 +13,7 @@ import 'package:tilawahku/features/reading/presentation/reading_screen.dart';
 import 'package:tilawahku/features/reading/presentation/search_screen.dart';
 import 'package:tilawahku/features/repeat/presentation/repeat_settings_screen.dart';
 import 'package:tilawahku/features/voices/data/voice_catalog.dart';
+import 'package:tilawahku/features/voices/data/voice_audio_source.dart';
 import 'package:tilawahku/features/download/data/surah_audio_repository.dart';
 
 void main() {
@@ -21,12 +22,29 @@ void main() {
   test('voice catalog reads the bundled configuration', () async {
     final voices = await const VoiceCatalog().load();
 
-    expect(voices, hasLength(3));
+    expect(voices, hasLength(9));
     expect(voices.first.id, 'husary');
     expect(voices[1].id, 'minshawi');
-    expect(voices.last.id, 'alafasy');
-    expect(voices.last.editionId, 'ar.alafasy');
+    expect(voices[2].id, 'alafasy');
+    expect(voices[2].editionId, 'ar.alafasy');
     expect(voices.every((voice) => voice.status == VoiceStatus.active), isTrue);
+    final expectedAdditions = {
+      'abdulbasit': ('ar.abdulsamad', 64),
+      'sudais': ('ar.abdurrahmaansudais', 192),
+      'hani-rifai': ('ar.hanirifai', 192),
+      'maher-muaiqly': ('ar.mahermuaiqly', 128),
+      'muhammad-ayyoub': ('ar.muhammadayyoub', 128),
+      'saood-shuraym': ('ar.saoodshuraym', 64),
+    };
+    for (final entry in expectedAdditions.entries) {
+      final voice = voices.singleWhere((item) => item.id == entry.key);
+      expect(voice.editionId, entry.value.$1);
+      expect(voice.bitrateKbps, entry.value.$2);
+      expect(
+        VoiceAudioSource.urlFor(voice, 6236),
+        '${VoiceAudioSource.baseUrl}/${entry.value.$2}/${entry.value.$1}/6236.mp3',
+      );
+    }
   });
 
   test('ayah entries read the bundled Latin transliteration', () {
