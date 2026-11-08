@@ -1,5 +1,5 @@
 abstract final class DatabaseSchema {
-  static const version = 5;
+  static const version = 6;
 
   static const createSurah = '''
     CREATE TABLE surah (
@@ -207,6 +207,17 @@ abstract final class DatabaseSchema {
       'CREATE INDEX memorization_history_program_idx '
       'ON memorization_status_history (program_id, changed_at DESC)';
 
+  static const createTajwidQuizAttempt = '''
+    CREATE TABLE tajwid_quiz_attempt (
+      id TEXT PRIMARY KEY,
+      total_questions INTEGER NOT NULL CHECK (total_questions > 0),
+      correct_answers INTEGER NOT NULL CHECK (
+        correct_answers >= 0 AND correct_answers <= total_questions
+      ),
+      completed_at TEXT NOT NULL
+    )
+  ''';
+
   static const memorizationCreateStatements = [
     createMemorizationProgram,
     createMemorizationAyahProgress,
@@ -217,6 +228,8 @@ abstract final class DatabaseSchema {
     createMemorizationSessionsIndex,
     createMemorizationHistoryIndex,
   ];
+
+  static const tajwidCreateStatements = [createTajwidQuizAttempt];
 
   static const createAyahSurahIndex =
       'CREATE INDEX ayah_surah_ayat_idx ON ayah (surah, ayat)';
@@ -240,5 +253,6 @@ abstract final class DatabaseSchema {
     createAyahJuzIndex,
     createAyahHalamanIndex,
     ...memorizationCreateStatements,
+    ...tajwidCreateStatements,
   ];
 }

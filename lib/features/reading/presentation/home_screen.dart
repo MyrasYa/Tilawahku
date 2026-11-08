@@ -9,6 +9,8 @@ import '../../memorization/data/memorization_repository.dart';
 import '../../memorization/presentation/memorization_home_screen.dart';
 import '../../player/data/quran_audio_handler.dart';
 import '../../settings/presentation/settings_screen.dart';
+import '../../tajwid/data/tajwid_repository.dart';
+import '../../tajwid/presentation/tajwid_home_screen.dart';
 import '../data/reading_repository.dart';
 import 'bookmarks_screen.dart';
 import 'reading_screen.dart';
@@ -35,6 +37,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final ReadingRepository _repository;
   late final MemorizationRepository _memorizationRepository;
+  late final TajwidRepository _tajwidRepository;
   late Future<List<Surah>> _surahs;
   String? _voiceId;
   String? _loadError;
@@ -48,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _memorizationRepository =
         widget.memorizationRepository ??
         MemorizationRepository(readingRepository: _repository);
+    _tajwidRepository = TajwidRepository();
     _surahs = _repository.getSurahs();
     _loadVoice();
   }
@@ -243,6 +247,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             icon: const Icon(Icons.psychology_alt_outlined),
+          ),
+          IconButton(
+            tooltip: 'Belajar Tajwid',
+            onPressed: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => TajwidHomeScreen(
+                  repository: _tajwidRepository,
+                  readingRepository: _repository,
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.menu_book_rounded),
           ),
           IconButton(
             tooltip: 'Unduhan',

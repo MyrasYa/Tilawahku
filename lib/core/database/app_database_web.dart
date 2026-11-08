@@ -42,6 +42,11 @@ class AppDatabase {
               await db.execute(statement);
             }
           }
+          if (oldVersion < 6) {
+            for (final statement in DatabaseSchema.tajwidCreateStatements) {
+              await db.execute(statement);
+            }
+          }
         },
       ),
     );
