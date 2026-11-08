@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/preferences/app_preferences.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
-import '../features/reading/presentation/home_screen.dart';
+import '../features/navigation/presentation/main_navigation_screen.dart';
 import 'app_theme.dart';
 
 class TilawahkuApp extends StatefulWidget {
@@ -149,7 +149,7 @@ class _StartupScreenState extends State<_StartupScreen> {
           onSetDarkMode: widget.onSetDarkMode,
         );
       } else {
-        destination = HomeScreen(
+        destination = MainNavigationScreen(
           preferences: widget.preferences,
           onSetDarkMode: widget.onSetDarkMode,
         );

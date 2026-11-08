@@ -8,7 +8,7 @@ import '../../../core/preferences/app_preferences.dart';
 import '../../download/data/audio_download_manager.dart';
 import '../../download/data/audio_package_repository.dart';
 import '../../player/data/quran_audio_handler.dart';
-import '../../reading/presentation/home_screen.dart';
+import '../../navigation/presentation/main_navigation_screen.dart';
 import '../data/voice_catalog.dart';
 import '../data/voice_preview_controller.dart';
 import '../data/voice_repository.dart';
@@ -284,7 +284,7 @@ class _VoiceSelectionScreenState extends State<VoiceSelectionScreen> {
     } else {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
-          builder: (_) => HomeScreen(
+          builder: (_) => MainNavigationScreen(
             preferences: widget.preferences,
             onSetDarkMode: widget.onSetDarkMode,
           ),

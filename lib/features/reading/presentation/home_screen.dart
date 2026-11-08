@@ -5,12 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../app/app_theme.dart';
 import '../../../core/preferences/app_preferences.dart';
 import '../../download/presentation/download_screen.dart';
-import '../../memorization/data/memorization_repository.dart';
-import '../../memorization/presentation/memorization_home_screen.dart';
 import '../../player/data/quran_audio_handler.dart';
-import '../../settings/presentation/settings_screen.dart';
-import '../../tajwid/data/tajwid_repository.dart';
-import '../../tajwid/presentation/tajwid_home_screen.dart';
 import '../data/reading_repository.dart';
 import 'bookmarks_screen.dart';
 import 'reading_screen.dart';
@@ -20,15 +15,13 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.preferences,
-    required this.onSetDarkMode,
     this.repository,
-    this.memorizationRepository,
+    this.reloadSignal,
   });
 
   final AppPreferences preferences;
-  final ValueChanged<bool> onSetDarkMode;
   final ReadingRepository? repository;
-  final MemorizationRepository? memorizationRepository;
+  final ValueListenable<int>? reloadSignal;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -36,8 +29,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final ReadingRepository _repository;
-  late final MemorizationRepository _memorizationRepository;
-  late final TajwidRepository _tajwidRepository;
   late Future<List<Surah>> _surahs;
   String? _voiceId;
   String? _loadError;
@@ -48,13 +39,26 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? ReadingRepository();
-    _memorizationRepository =
-        widget.memorizationRepository ??
-        MemorizationRepository(readingRepository: _repository);
-    _tajwidRepository = TajwidRepository();
     _surahs = _repository.getSurahs();
     _loadVoice();
+    widget.reloadSignal?.addListener(_reloadFromShell);
   }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.reloadSignal == widget.reloadSignal) return;
+    oldWidget.reloadSignal?.removeListener(_reloadFromShell);
+    widget.reloadSignal?.addListener(_reloadFromShell);
+  }
+
+  @override
+  void dispose() {
+    widget.reloadSignal?.removeListener(_reloadFromShell);
+    super.dispose();
+  }
+
+  void _reloadFromShell() => _loadVoice();
 
   Future<void> _loadVoice() async {
     try {
@@ -93,22 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _loadError = 'Gagal memuat progres: $error';
       });
     }
-  }
-
-  Future<void> _openSettings() async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => SettingsScreen(
-          preferences: widget.preferences,
-          onSetDarkMode: widget.onSetDarkMode,
-        ),
-      ),
-    );
-    if (!mounted) return;
-    await _loadVoice();
-    setState(() {
-      _surahs = _repository.getSurahs();
-    });
   }
 
   void _reloadSurahs() {
@@ -196,24 +184,10 @@ class _HomeScreenState extends State<HomeScreen> {
     length: 2,
     child: Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Image.asset(
-              'assets/branding/tilawahku_icon.png',
-              width: 32,
-              height: 32,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'Tilawahku',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
+        title: const Text('Al-Qur’an'),
         actions: [
           IconButton(
-            tooltip: 'Cari ayat',
+            tooltip: 'Cari surah atau ayat',
             onPressed: () => Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
                 builder: (_) => SearchScreen(
@@ -237,31 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.bookmarks_outlined),
           ),
           IconButton(
-            tooltip: 'Hafalan Al-Qur’an',
-            onPressed: () => Navigator.of(context).push<void>(
-              MaterialPageRoute<void>(
-                builder: (_) => MemorizationHomeScreen(
-                  repository: _memorizationRepository,
-                  readingRepository: _repository,
-                ),
-              ),
-            ),
-            icon: const Icon(Icons.psychology_alt_outlined),
-          ),
-          IconButton(
-            tooltip: 'Belajar Tajwid',
-            onPressed: () => Navigator.of(context).push<void>(
-              MaterialPageRoute<void>(
-                builder: (_) => TajwidHomeScreen(
-                  repository: _tajwidRepository,
-                  readingRepository: _repository,
-                ),
-              ),
-            ),
-            icon: const Icon(Icons.menu_book_rounded),
-          ),
-          IconButton(
-            tooltip: 'Unduhan',
+            tooltip: 'Unduhan audio',
             onPressed: kIsWeb
                 ? () => _showMessage(
                     'Audio belum tersedia secara lokal di Web preview. '
@@ -274,11 +224,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
             icon: const Icon(Icons.download_rounded),
-          ),
-          IconButton(
-            tooltip: 'Pengaturan',
-            onPressed: _openSettings,
-            icon: const Icon(Icons.settings_outlined),
           ),
         ],
         bottom: const TabBar(

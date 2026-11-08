@@ -86,7 +86,6 @@ void main() {
         home: HomeScreen(
           repository: _FakeReadingRepository(),
           preferences: const _NoVoiceReaderPreferences(),
-          onSetDarkMode: (_) {},
         ),
       ),
     );

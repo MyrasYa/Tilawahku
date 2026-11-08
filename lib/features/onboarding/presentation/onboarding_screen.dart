@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_theme.dart';
 import '../../../core/preferences/app_preferences.dart';
-import '../../reading/presentation/home_screen.dart';
+import '../../navigation/presentation/main_navigation_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({
@@ -50,7 +50,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
-          builder: (_) => HomeScreen(
+          builder: (_) => MainNavigationScreen(
             preferences: widget.preferences,
             onSetDarkMode: widget.onSetDarkMode,
           ),
