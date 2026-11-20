@@ -44,6 +44,13 @@ dependencies:
   sqflite_common_ffi_web: ^1.2.0
   storage_space: ^1.4.0
   scrollable_positioned_list: ^0.3.8
+  geolocator: ^14.1.2
+  # 22.x adalah rilis terakhir yang masih dibangun dengan AGP 8.11.1 dan
+  # compileSdk 36 — sama persis dengan toolchain proyek ini. 23.x meminta
+  # compileSdk 37 yang akan memaksa upgrade AGP/Gradle tanpa bisa diverifikasi
+  # di mesin ini (tidak ada Android SDK).
+  flutter_local_notifications: ^22.3.3
+  timezone: ^0.11.2
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +83,7 @@ flutter:
     - assets/data/quran_web_preview.json
     - assets/branding/tilawahku_icon.png
     - assets/fonts/OFL.txt
+    - assets/prayer/city_locations.json
   fonts:
     - family: AmiriQuran
       fonts:

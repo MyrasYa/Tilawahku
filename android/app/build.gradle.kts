@@ -28,6 +28,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -41,4 +42,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Desugaring dibutuhkan flutter_local_notifications untuk menjadwalkan
+// pengingat waktu salat pada Android lama (lihat README plugin v22).
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

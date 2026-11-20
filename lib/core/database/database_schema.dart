@@ -1,5 +1,5 @@
 abstract final class DatabaseSchema {
-  static const version = 6;
+  static const version = 7;
 
   static const createSurah = '''
     CREATE TABLE surah (
@@ -218,6 +218,28 @@ abstract final class DatabaseSchema {
     )
   ''';
 
+  /// Cache jadwal sholat. `events_json` menyimpan stamp ISO 8601 beroffset
+  /// apa adanya dari AlAdhan, jadi nilai yang ditampilkan dapat ditelusuri ke
+  /// respons server dan penyesuaian manual tidak ikut tersimpan.
+  static const createPrayerScheduleCache = '''
+    CREATE TABLE prayer_schedule_cache (
+      cache_key TEXT PRIMARY KEY,
+      date_key TEXT NOT NULL,
+      location_key TEXT NOT NULL,
+      method_id INTEGER NOT NULL,
+      asr_madhab TEXT NOT NULL,
+      timezone_id TEXT NOT NULL,
+      offset_minutes INTEGER NOT NULL,
+      events_json TEXT NOT NULL,
+      hijri_json TEXT,
+      fetched_at TEXT NOT NULL
+    )
+  ''';
+
+  static const createPrayerScheduleDayIndex =
+      'CREATE INDEX prayer_schedule_day_idx '
+      'ON prayer_schedule_cache (date_key, location_key)';
+
   static const memorizationCreateStatements = [
     createMemorizationProgram,
     createMemorizationAyahProgress,
@@ -230,6 +252,11 @@ abstract final class DatabaseSchema {
   ];
 
   static const tajwidCreateStatements = [createTajwidQuizAttempt];
+
+  static const prayerCreateStatements = [
+    createPrayerScheduleCache,
+    createPrayerScheduleDayIndex,
+  ];
 
   static const createAyahSurahIndex =
       'CREATE INDEX ayah_surah_ayat_idx ON ayah (surah, ayat)';
@@ -254,5 +281,6 @@ abstract final class DatabaseSchema {
     createAyahHalamanIndex,
     ...memorizationCreateStatements,
     ...tajwidCreateStatements,
+    ...prayerCreateStatements,
   ];
 }

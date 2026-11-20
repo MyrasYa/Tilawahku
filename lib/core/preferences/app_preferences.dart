@@ -58,4 +58,41 @@ class AppPreferences {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setDouble(_arabicTextScaleKey, value);
   }
+
+  // Kunci generik untuk fitur di luar pembacaan Al-Qur'an (mis. pengaturan
+  // waktu sholat) agar semua preferensi tetap lewat satu penyimpanan.
+  Future<String?> getString(String key) async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getString(key);
+  }
+
+  Future<void> setString(String key, String value) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(key, value);
+  }
+
+  Future<bool?> getBool(String key) async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getBool(key);
+  }
+
+  Future<void> setBool(String key, bool value) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(key, value);
+  }
+
+  Future<int?> getInt(String key) async {
+    final preferences = await SharedPreferences.getInstance();
+    return preferences.getInt(key);
+  }
+
+  Future<void> setInt(String key, int value) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setInt(key, value);
+  }
+
+  Future<void> remove(String key) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(key);
+  }
 }

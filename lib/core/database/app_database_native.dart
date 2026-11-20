@@ -63,6 +63,11 @@ class AppDatabase {
             await db.execute(statement);
           }
         }
+        if (oldVersion < 7) {
+          for (final statement in DatabaseSchema.prayerCreateStatements) {
+            await db.execute(statement);
+          }
+        }
       },
       onOpen: (db) => _ensureBundledContent(db, filePath),
     );
