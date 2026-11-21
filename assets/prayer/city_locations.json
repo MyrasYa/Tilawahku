@@ -1,0 +1,306 @@
+{
+  "_meta": {
+    "generated_at": "2026-11-20T10:12:19Z",
+    "coordinate_source": "OpenStreetMap Nominatim search API (ODbL 1.0)",
+    "timezone_source": "AlAdhan v1 /v1/timings meta.timezone",
+    "generator": "research/Tilawahku-asr-poc/prd-master/build_city_locations.py"
+  },
+  "locations": [
+    {
+      "name": "Jakarta",
+      "country": "ID",
+      "latitude": -6.1754,
+      "longitude": 106.82717,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Bandung",
+      "country": "ID",
+      "latitude": -6.92185,
+      "longitude": 107.60708,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Semarang",
+      "country": "ID",
+      "latitude": -6.9904,
+      "longitude": 110.42291,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Yogyakarta",
+      "country": "ID",
+      "latitude": -7.79535,
+      "longitude": 110.36728,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Surabaya",
+      "country": "ID",
+      "latitude": -7.24628,
+      "longitude": 112.73777,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Medan",
+      "country": "ID",
+      "latitude": 3.58946,
+      "longitude": 98.67416,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Padang",
+      "country": "ID",
+      "latitude": -0.92476,
+      "longitude": 100.36326,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Pekanbaru",
+      "country": "ID",
+      "latitude": 0.52625,
+      "longitude": 101.45157,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Jambi",
+      "country": "ID",
+      "latitude": -1.707,
+      "longitude": 102.714,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Bengkulu",
+      "country": "ID",
+      "latitude": -4.00352,
+      "longitude": 101.83935,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Palembang",
+      "country": "ID",
+      "latitude": -2.98882,
+      "longitude": 104.75685,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Bandar Lampung",
+      "country": "ID",
+      "latitude": -5.42939,
+      "longitude": 105.26262,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Serang",
+      "country": "ID",
+      "latitude": -6.11697,
+      "longitude": 106.15181,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Pangkal Pinang",
+      "country": "ID",
+      "latitude": -2.12067,
+      "longitude": 106.11346,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Banda Aceh",
+      "country": "ID",
+      "latitude": 5.55285,
+      "longitude": 95.31929,
+      "timezone": "Asia/Jakarta",
+      "matched": "administrative"
+    },
+    {
+      "name": "Banjarmasin",
+      "country": "ID",
+      "latitude": -3.31875,
+      "longitude": 114.59258,
+      "timezone": "Asia/Makassar",
+      "matched": "administrative"
+    },
+    {
+      "name": "Palangka Raya",
+      "country": "ID",
+      "latitude": -2.20729,
+      "longitude": 113.91644,
+      "timezone": "Asia/Pontianak",
+      "matched": "administrative"
+    },
+    {
+      "name": "Samarinda",
+      "country": "ID",
+      "latitude": -0.50178,
+      "longitude": 117.13931,
+      "timezone": "Asia/Makassar",
+      "matched": "administrative"
+    },
+    {
+      "name": "Tanjung Selor",
+      "country": "ID",
+      "latitude": 2.84305,
+      "longitude": 117.36132,
+      "timezone": "Asia/Makassar",
+      "matched": "city"
+    },
+    {
+      "name": "Pontianak",
+      "country": "ID",
+      "latitude": -0.02269,
+      "longitude": 109.34475,
+      "timezone": "Asia/Pontianak",
+      "matched": "administrative"
+    },
+    {
+      "name": "Manado",
+      "country": "ID",
+      "latitude": 1.49004,
+      "longitude": 124.84077,
+      "timezone": "Asia/Makassar",
+      "matched": "administrative"
+    },
+    {
+      "name": "Gorontalo",
+      "country": "ID",
+      "latitude": 0.71862,
+      "longitude": 122.45559,
+      "timezone": "Asia/Makassar",
+      "matched": "administrative"
+    },
+    {
+      "name": "Palu",
+      "country": "ID",
+      "latitude": -0.89578,
+      "longitude": 119.868,
+      "timezone": "Asia/Makassar",
+      "matched": "city"
+    },
+    {
+      "name": "Kendari",
+      "country": "ID",
+      "latitude": -3.99181,
+      "longitude": 122.51801,
+      "timezone": "Asia/Makassar",
+      "matched": "administrative"
+    },
+    {
+      "name": "Makassar",
+      "country": "ID",
+      "latitude": -5.1343,
+      "longitude": 119.41243,
+      "timezone": "Asia/Makassar",
+      "matched": "administrative"
+    },
+    {
+      "name": "Ambon",
+      "country": "ID",
+      "latitude": -3.69594,
+      "longitude": 128.17879,
+      "timezone": "Asia/Jayapura",
+      "matched": "administrative"
+    },
+    {
+      "name": "Jayapura",
+      "country": "ID",
+      "latitude": -2.53875,
+      "longitude": 140.70374,
+      "timezone": "Asia/Jayapura",
+      "matched": "administrative"
+    },
+    {
+      "name": "Mataram",
+      "country": "ID",
+      "latitude": -8.58377,
+      "longitude": 116.10685,
+      "timezone": "Asia/Makassar",
+      "matched": "administrative"
+    },
+    {
+      "name": "Kupang",
+      "country": "ID",
+      "latitude": -10.16322,
+      "longitude": 123.60178,
+      "timezone": "Asia/Makassar",
+      "matched": "administrative"
+    },
+    {
+      "name": "Mekah",
+      "country": "SA",
+      "latitude": 21.42085,
+      "longitude": 39.82687,
+      "timezone": "Asia/Riyadh",
+      "matched": "administrative"
+    },
+    {
+      "name": "Madinah",
+      "country": "SA",
+      "latitude": 24.47115,
+      "longitude": 39.61112,
+      "timezone": "Asia/Riyadh",
+      "matched": "city"
+    },
+    {
+      "name": "Riyadh",
+      "country": "SA",
+      "latitude": 24.63892,
+      "longitude": 46.71601,
+      "timezone": "Asia/Riyadh",
+      "matched": "city"
+    },
+    {
+      "name": "Kairo",
+      "country": "EG",
+      "latitude": 30.04439,
+      "longitude": 31.23573,
+      "timezone": "Africa/Cairo",
+      "matched": "city"
+    },
+    {
+      "name": "Istanbul",
+      "country": "TR",
+      "latitude": 41.00638,
+      "longitude": 28.97587,
+      "timezone": "Europe/Istanbul",
+      "matched": "city"
+    },
+    {
+      "name": "Kuala Lumpur",
+      "country": "MY",
+      "latitude": 3.1517,
+      "longitude": 101.69424,
+      "timezone": "Asia/Kuala_Lumpur",
+      "matched": "administrative"
+    },
+    {
+      "name": "Singapura",
+      "country": "SG",
+      "latitude": 1.28992,
+      "longitude": 103.85191,
+      "timezone": "Asia/Singapore",
+      "matched": "city"
+    },
+    {
+      "name": "London",
+      "country": "GB",
+      "latitude": 51.50745,
+      "longitude": -0.12777,
+      "timezone": "Europe/London",
+      "matched": "administrative"
+    }
+  ]
+}

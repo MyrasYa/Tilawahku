@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tilawahku/core/database/database_schema.dart';
 
 void main() {
-  test('tajwid progress uses an additive v6 schema', () {
-    expect(DatabaseSchema.version, 6);
+  test('tajwid progress uses an additive schema', () {
+    expect(DatabaseSchema.version, 9);
     expect(DatabaseSchema.tajwidCreateStatements, hasLength(1));
     expect(
       DatabaseSchema.createStatements,

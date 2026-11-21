@@ -31,12 +31,31 @@ enum MemorizationSessionMode {
   learn('learn', 'Belajar'),
   hideReveal('hide_reveal', 'Sembunyikan & buka'),
   recall('recall', 'Latihan mengingat'),
-  audio('audio_repetition', 'Pengulangan audio');
+  audio('audio_repetition', 'Pengulangan audio'),
+  aiAssessment('ai_assessment', 'Setoran Suara (AI)');
 
   const MemorizationSessionMode(this.value, this.label);
 
   final String value;
   final String label;
+}
+
+// Safe deserialization – unknown values fall back to `learn`
+MemorizationSessionMode _modeFromValue(String? value) {
+  switch (value) {
+    case 'learn':
+      return MemorizationSessionMode.learn;
+    case 'hide_reveal':
+      return MemorizationSessionMode.hideReveal;
+    case 'recall':
+      return MemorizationSessionMode.recall;
+    case 'audio_repetition':
+      return MemorizationSessionMode.audio;
+    case 'ai_assessment':
+      return MemorizationSessionMode.aiAssessment;
+    default:
+      return MemorizationSessionMode.learn;
+  }
 }
 
 class MemorizationProgram {
@@ -124,9 +143,7 @@ class MemorizationSession {
       MemorizationSession(
         id: map['id']! as String,
         programId: map['program_id']! as String,
-        mode: MemorizationSessionMode.values.firstWhere(
-          (mode) => mode.value == map['mode'],
-        ),
+        mode: _modeFromValue(map['mode'] as String?),
         dayKey: map['day_key']! as String,
         startedAt: map['started_at']! as String,
         completedAt: map['completed_at'] as String?,

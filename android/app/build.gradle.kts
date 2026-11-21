@@ -28,6 +28,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
+        // sherpa_onnx mengirim paket ffiPlugin per ABI (total 109,1 MB .so), jadi
+        // tanpa filter semua library ASR masuk APK. x86/x86_64 sengaja tidak
+        // dibawa; tambahkan "x86_64" di sini hanya bila pengujian memakai
+        // emulator x86_64.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     buildTypes {
@@ -41,4 +49,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Desugaring dibutuhkan flutter_local_notifications untuk menjadwalkan
+// pengingat waktu salat pada Android lama (lihat README plugin v22).
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

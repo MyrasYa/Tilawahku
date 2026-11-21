@@ -4,9 +4,13 @@ import 'package:flutter/material.dart';
 import '../../../app/app_theme.dart';
 import '../../../core/preferences/app_preferences.dart';
 import '../../about/presentation/about_screen.dart';
+import '../../hijri/presentation/hijri_calendar_screen.dart';
 import '../../memorization/data/memorization_repository.dart';
 import '../../memorization/domain/memorization_models.dart';
 import '../../memorization/presentation/memorization_home_screen.dart';
+import '../../prayer/data/prayer_repository.dart';
+import '../../prayer/presentation/prayer_times_screen.dart';
+import '../../qibla/presentation/qibla_screen.dart';
 import '../../reading/data/reading_repository.dart';
 import '../../reading/presentation/home_screen.dart';
 import '../../reading/presentation/reading_screen.dart';
@@ -22,6 +26,7 @@ class MainNavigationScreen extends StatefulWidget {
     this.readingRepository,
     this.memorizationRepository,
     this.tajwidRepository,
+    this.prayerRepository,
   });
 
   final AppPreferences preferences;
@@ -29,6 +34,7 @@ class MainNavigationScreen extends StatefulWidget {
   final ReadingRepository? readingRepository;
   final MemorizationRepository? memorizationRepository;
   final TajwidRepository? tajwidRepository;
+  final PrayerRepository? prayerRepository;
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
@@ -38,6 +44,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   late final ReadingRepository _readingRepository;
   late final MemorizationRepository _memorizationRepository;
   late final TajwidRepository _tajwidRepository;
+  late final PrayerRepository _prayerRepository;
   final ValueNotifier<int> _reloadSignal = ValueNotifier(0);
   int _selectedIndex = 0;
 
@@ -49,7 +56,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         widget.memorizationRepository ??
         MemorizationRepository(readingRepository: _readingRepository);
     _tajwidRepository = widget.tajwidRepository ?? TajwidRepository();
+    _prayerRepository = widget.prayerRepository ?? PrayerRepository();
   }
+
+  Future<void> _openPrayerTimes() => Navigator.of(context).push<void>(
+    MaterialPageRoute<void>(
+      builder: (_) => PrayerTimesScreen(repository: _prayerRepository),
+    ),
+  );
+
+  Future<void> _openQibla() => Navigator.of(
+    context,
+  ).push<void>(MaterialPageRoute<void>(builder: (_) => const QiblaScreen()));
+
+  Future<void> _openHijriCalendar() => Navigator.of(context).push<void>(
+    MaterialPageRoute<void>(builder: (_) => const HijriCalendarScreen()),
+  );
 
   Future<void> _openMemorization() => Navigator.of(context).push<void>(
     MaterialPageRoute<void>(
@@ -105,6 +127,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           onOpenQuran: () => setState(() => _selectedIndex = 1),
           onOpenMemorization: _openMemorization,
           onOpenTajwid: _openTajwid,
+          onOpenPrayerTimes: _openPrayerTimes,
         ),
         HomeScreen(
           preferences: widget.preferences,
@@ -115,7 +138,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           onOpenMemorization: _openMemorization,
           onOpenTajwid: _openTajwid,
         ),
-        _MoreScreen(onOpenSettings: _openSettings, onOpenAbout: _openAbout),
+        _MoreScreen(
+          onOpenSettings: _openSettings,
+          onOpenAbout: _openAbout,
+          onOpenPrayerTimes: _openPrayerTimes,
+          onOpenQibla: _openQibla,
+          onOpenHijriCalendar: _openHijriCalendar,
+        ),
       ],
     ),
     bottomNavigationBar: NavigationBar(
@@ -158,6 +187,7 @@ class _HomeDashboard extends StatefulWidget {
     required this.onOpenQuran,
     required this.onOpenMemorization,
     required this.onOpenTajwid,
+    required this.onOpenPrayerTimes,
   });
 
   final AppPreferences preferences;
@@ -167,6 +197,7 @@ class _HomeDashboard extends StatefulWidget {
   final VoidCallback onOpenQuran;
   final VoidCallback onOpenMemorization;
   final VoidCallback onOpenTajwid;
+  final VoidCallback onOpenPrayerTimes;
 
   @override
   State<_HomeDashboard> createState() => _HomeDashboardState();
@@ -338,17 +369,15 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 ),
               ),
             ],
-            const SizedBox(height: 12),
-            const Card(
-              child: ListTile(
-                leading: Icon(Icons.schedule_rounded),
-                title: Text('Jadwal salat'),
-                subtitle: Text('Fitur ini belum tersedia.'),
-              ),
-            ),
             const SizedBox(height: 20),
             Text('Akses cepat', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
+            _DashboardAction(
+              icon: Icons.schedule_rounded,
+              title: 'Waktu salat',
+              subtitle: 'Jadwal, hitung mundur, dan pengingat',
+              onTap: widget.onOpenPrayerTimes,
+            ),
             _DashboardAction(
               icon: Icons.menu_book_rounded,
               title: 'Buka Al-Qur’an',
@@ -569,10 +598,19 @@ class _ActivitiesScreen extends StatelessWidget {
 }
 
 class _MoreScreen extends StatelessWidget {
-  const _MoreScreen({required this.onOpenSettings, required this.onOpenAbout});
+  const _MoreScreen({
+    required this.onOpenSettings,
+    required this.onOpenAbout,
+    required this.onOpenPrayerTimes,
+    required this.onOpenQibla,
+    required this.onOpenHijriCalendar,
+  });
 
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenAbout;
+  final VoidCallback onOpenPrayerTimes;
+  final VoidCallback onOpenQibla;
+  final VoidCallback onOpenHijriCalendar;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -583,17 +621,23 @@ class _MoreScreen extends StatelessWidget {
       children: [
         Text('Fitur tambahan', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
-        const _UnavailableAction(
+        _DashboardAction(
           icon: Icons.schedule_rounded,
-          title: 'Jadwal salat',
+          title: 'Waktu salat',
+          subtitle: 'Jadwal lima waktu, hijriah, dan pengingat',
+          onTap: onOpenPrayerTimes,
         ),
-        const _UnavailableAction(
+        _DashboardAction(
           icon: Icons.explore_outlined,
           title: 'Arah kiblat',
+          subtitle: 'Kompas perangkat atau dial manual',
+          onTap: onOpenQibla,
         ),
-        const _UnavailableAction(
+        _DashboardAction(
           icon: Icons.calendar_month_outlined,
           title: 'Kalender Hijriah',
+          subtitle: 'Tanggal Hijri, kalender bulanan, dan event penting',
+          onTap: onOpenHijriCalendar,
         ),
         const _UnavailableAction(
           icon: Icons.star_outline_rounded,
