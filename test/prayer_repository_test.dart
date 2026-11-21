@@ -85,29 +85,39 @@ void main() {
       expect(first.schedule.source, ScheduleSource.live);
       expect(first.notice, isNull);
       expect(source.calls, 2, reason: 'hari ini + pratarik besok');
-      expect(cache.stored.keys, containsAll([keyFor(today), keyFor('2026-11-21')]));
+      expect(
+        cache.stored.keys,
+        containsAll([keyFor(today), keyFor('2026-11-21')]),
+      );
 
       final second = await repository.scheduleFor(today);
       await pumpEventQueue();
-      expect(source.calls, 2, reason: 'cache masih segar, tidak ada permintaan baru');
+      expect(
+        source.calls,
+        2,
+        reason: 'cache masih segar, tidak ada permintaan baru',
+      );
       expect(second.schedule.source, ScheduleSource.cache);
       expect(second.schedule.eventFor(PrayerKind.fajr)!.wallClock, '04:03');
     });
 
-    test('pratarik hari berikutnya membuat besok tetap bisa dibuka saat luring', () async {
-      await seed();
-      await repository.scheduleFor(today);
-      await pumpEventQueue();
-      source.failure = const PrayerDataSourceException(
-        PrayerDataFailureKind.offline,
-        'Perangkat sedang luring.',
-      );
+    test(
+      'pratarik hari berikutnya membuat besok tetap bisa dibuka saat luring',
+      () async {
+        await seed();
+        await repository.scheduleFor(today);
+        await pumpEventQueue();
+        source.failure = const PrayerDataSourceException(
+          PrayerDataFailureKind.offline,
+          'Perangkat sedang luring.',
+        );
 
-      final tomorrow = await repository.scheduleFor('2026-11-21');
-      expect(tomorrow.notice, isNull);
-      expect(tomorrow.schedule.dateKey, '2026-11-21');
-      expect(source.calls, 2);
-    });
+        final tomorrow = await repository.scheduleFor('2026-11-21');
+        expect(tomorrow.notice, isNull);
+        expect(tomorrow.schedule.dateKey, '2026-11-21');
+        expect(source.calls, 2);
+      },
+    );
 
     test('refresh memaksa permintaan ulang walau cache masih layak', () async {
       await seed();
@@ -134,61 +144,74 @@ void main() {
       expect(source.calls, 2, reason: 'satu unduhan hari ini + satu pratarik');
     });
 
-    test('refresh berdampingan tidak menumpuk permintaan hari berikutnya', () async {
-      await seed();
+    test(
+      'refresh berdampingan tidak menumpuk permintaan hari berikutnya',
+      () async {
+        await seed();
 
-      final outcomes = await Future.wait([
-        repository.scheduleFor(today),
-        repository.scheduleFor(today, refresh: true),
-      ]);
-      await pumpEventQueue();
+        final outcomes = await Future.wait([
+          repository.scheduleFor(today),
+          repository.scheduleFor(today, refresh: true),
+        ]);
+        await pumpEventQueue();
 
-      expect(outcomes, hasLength(2));
-      expect(source.lastRequests.where((r) => r.startsWith('2026-11-21|')), hasLength(1),
-          reason: 'pratarik dipakai bersama walau dua unduhan hari ini berjalan');
-    });
+        expect(outcomes, hasLength(2));
+        expect(
+          source.lastRequests.where((r) => r.startsWith('2026-11-21|')),
+          hasLength(1),
+          reason:
+              'pratarik dipakai bersama walau dua unduhan hari ini berjalan',
+        );
+      },
+    );
   });
 
   group('cache sebagai penyangga', () {
-    test('server gagal + ada cache: jadwal tetap tampil dengan catatan', () async {
-      // Cache basi adalah keadaan yang membuat aplikasi benar-benar mencoba
-      // server: kalau masih segar, tidak ada permintaan yang bisa gagal.
-      await seed(
-        cached: {
-          keyFor(today): _schedule(
-            today,
-            fetchedAt: fixedClock.subtract(
-              PrayerRepository.cacheAgeLimit + const Duration(hours: 1),
+    test(
+      'server gagal + ada cache: jadwal tetap tampil dengan catatan',
+      () async {
+        // Cache basi adalah keadaan yang membuat aplikasi benar-benar mencoba
+        // server: kalau masih segar, tidak ada permintaan yang bisa gagal.
+        await seed(
+          cached: {
+            keyFor(today): _schedule(
+              today,
+              fetchedAt: fixedClock.subtract(
+                PrayerRepository.cacheAgeLimit + const Duration(hours: 1),
+              ),
             ),
-          ),
-        },
-      );
-      source.failure = const PrayerDataSourceException(
-        PrayerDataFailureKind.timeout,
-        'Jadwal sholat tidak dapat diambil tepat waktu.',
-      );
+          },
+        );
+        source.failure = const PrayerDataSourceException(
+          PrayerDataFailureKind.timeout,
+          'Jadwal sholat tidak dapat diambil tepat waktu.',
+        );
 
-      final outcome = await repository.scheduleFor(today);
-      expect(outcome.schedule.dateKey, today);
-      expect(outcome.notice, contains('cache'));
-      expect(outcome.notice, contains('tidak dapat diambil tepat waktu'));
-      // Label enum tidak dipakai di kalimat ini: "berasal dari dari cache".
-      expect(outcome.notice, isNot(contains('dari dari')));
-    });
+        final outcome = await repository.scheduleFor(today);
+        expect(outcome.schedule.dateKey, today);
+        expect(outcome.notice, contains('cache'));
+        expect(outcome.notice, contains('tidak dapat diambil tepat waktu'));
+        // Label enum tidak dipakai di kalimat ini: "berasal dari dari cache".
+        expect(outcome.notice, isNot(contains('dari dari')));
+      },
+    );
 
-    test('server gagal + tanpa cache: kegagalan disampaikan, bukan ditutupi', () async {
-      await seed();
-      source.failure = const PrayerDataSourceException(
-        PrayerDataFailureKind.rejected,
-        'Layanan jadwal menolak permintaan.',
-      );
+    test(
+      'server gagal + tanpa cache: kegagalan disampaikan, bukan ditutupi',
+      () async {
+        await seed();
+        source.failure = const PrayerDataSourceException(
+          PrayerDataFailureKind.rejected,
+          'Layanan jadwal menolak permintaan.',
+        );
 
-      await expectLater(
-        repository.scheduleFor(today),
-        throwsA(isA<PrayerDataSourceException>()),
-      );
-      expect(cache.stored, isEmpty);
-    });
+        await expectLater(
+          repository.scheduleFor(today),
+          throwsA(isA<PrayerDataSourceException>()),
+        );
+        expect(cache.stored, isEmpty);
+      },
+    );
 
     test('tanggal lampau tidak diminta ulang meskipun cache-nya tua', () async {
       await seed(
@@ -206,21 +229,24 @@ void main() {
       expect(outcome.schedule.source, ScheduleSource.cache);
     });
 
-    test('cache hari ini yang melewati masa berlaku memicu unduhan ulang', () async {
-      await seed(
-        cached: {
-          keyFor(today): _schedule(
-            today,
-            fetchedAt: fixedClock.subtract(
-              PrayerRepository.cacheAgeLimit + const Duration(minutes: 1),
+    test(
+      'cache hari ini yang melewati masa berlaku memicu unduhan ulang',
+      () async {
+        await seed(
+          cached: {
+            keyFor(today): _schedule(
+              today,
+              fetchedAt: fixedClock.subtract(
+                PrayerRepository.cacheAgeLimit + const Duration(minutes: 1),
+              ),
             ),
-          ),
-        },
-      );
+          },
+        );
 
-      await repository.scheduleFor(today);
-      expect(source.calls, greaterThan(0));
-    });
+        await repository.scheduleFor(today);
+        expect(source.calls, greaterThan(0));
+      },
+    );
 
     test('ganti lokasi, metode, atau mazhab memakai kunci lain', () async {
       await seed();
@@ -237,20 +263,22 @@ void main() {
         await update(settings);
         await repository.scheduleFor(today);
         await pumpEventQueue();
-        expect(source.calls, before + 2, reason: 'satu permintaan per tanggal+kunci');
+        expect(
+          source.calls,
+          before + 2,
+          reason: 'satu permintaan per tanggal+kunci',
+        );
       }
 
       await change(
-        (settings) => preferences.save(
-          settings.copyWith(method: PrayerMethod.byId(3)),
-        ),
+        (settings) =>
+            preferences.save(settings.copyWith(method: PrayerMethod.byId(3))),
       );
       expect(source.lastRequests.last, contains('|3|'));
 
       await change(
-        (settings) => preferences.save(
-          settings.copyWith(asrMadhab: AsrMadhab.hanafi),
-        ),
+        (settings) =>
+            preferences.save(settings.copyWith(asrMadhab: AsrMadhab.hanafi)),
       );
       expect(source.lastRequests.last, contains('hanafi'));
 
@@ -267,26 +295,33 @@ void main() {
       expect(source.lastRequests.last, contains('21.422,39.826'));
     });
 
-    test('penyesuaian menit hanya mengubah tampilan, cache tetap nilai server', () async {
-      final raw = _schedule(today);
-      await seed(
-        settings: const PrayerSettings(
-          method: PrayerMethod.kemenag,
-          asrMadhab: AsrMadhab.standard,
-          adjustments: PrayerAdjustments({PrayerKind.fajr: -5}),
-          location: jakarta,
-        ),
-        cached: {keyFor(today): raw},
-      );
+    test(
+      'penyesuaian menit hanya mengubah tampilan, cache tetap nilai server',
+      () async {
+        final raw = _schedule(today);
+        await seed(
+          settings: const PrayerSettings(
+            method: PrayerMethod.kemenag,
+            asrMadhab: AsrMadhab.standard,
+            adjustments: PrayerAdjustments({PrayerKind.fajr: -5}),
+            location: jakarta,
+          ),
+          cached: {keyFor(today): raw},
+        );
 
-      final outcome = await repository.scheduleFor(today);
-      expect(outcome.schedule.eventFor(PrayerKind.fajr)!.wallClock, '03:58');
-      expect(outcome.schedule.eventFor(PrayerKind.dhuhr)!.wallClock, '11:38');
+        final outcome = await repository.scheduleFor(today);
+        expect(outcome.schedule.eventFor(PrayerKind.fajr)!.wallClock, '03:58');
+        expect(outcome.schedule.eventFor(PrayerKind.dhuhr)!.wallClock, '11:38');
 
-      final stored = await cache.load(keyFor(today));
-      expect(stored!.eventFor(PrayerKind.fajr)!.wallClock, '04:03');
-      expect(source.calls, 0, reason: 'penyesuaian bukan alasan untuk unduh ulang');
-    });
+        final stored = await cache.load(keyFor(today));
+        expect(stored!.eventFor(PrayerKind.fajr)!.wallClock, '04:03');
+        expect(
+          source.calls,
+          0,
+          reason: 'penyesuaian bukan alasan untuk unduh ulang',
+        );
+      },
+    );
   });
 
   group('lokasi belum ada', () {
@@ -329,16 +364,19 @@ void main() {
   });
 
   group('pengingat', () {
-    test('nonaktif berarti membersihkan jadwal lama dan mengembalikan false', () async {
-      await seed();
-      final armed = await repository.syncReminders(
-        _schedule(today),
-        (await preferences.load()).copyWith(remindersEnabled: false),
-      );
-      expect(armed, isFalse);
-      expect(scheduler.clears, 1);
-      expect(scheduler.lastSync, isNull);
-    });
+    test(
+      'nonaktif berarti membersihkan jadwal lama dan mengembalikan false',
+      () async {
+        await seed();
+        final armed = await repository.syncReminders(
+          _schedule(today),
+          (await preferences.load()).copyWith(remindersEnabled: false),
+        );
+        expect(armed, isFalse);
+        expect(scheduler.clears, 1);
+        expect(scheduler.lastSync, isNull);
+      },
+    );
 
     test('platform tanpa penjadwal tidak berpura-pura menjadwalkan', () async {
       scheduler = _FakeScheduler(supported: false);
@@ -387,64 +425,73 @@ void main() {
         ),
       );
 
-      expect(await repo.syncReminders(_schedule(today), await preferences.load()), isFalse);
+      expect(
+        await repo.syncReminders(_schedule(today), await preferences.load()),
+        isFalse,
+      );
       expect(scheduler.lastSync, isNull);
     });
 
-    test('pengingat disinkronkan hanya untuk waktu yang tersisa hari ini', () async {
-      await seed(
-        settings: const PrayerSettings(
-          method: PrayerMethod.kemenag,
-          asrMadhab: AsrMadhab.standard,
-          adjustments: PrayerAdjustments(),
-          location: jakarta,
-          remindersEnabled: true,
-          reminderLeadMinutes: 10,
-        ),
-      );
+    test(
+      'pengingat disinkronkan hanya untuk waktu yang tersisa hari ini',
+      () async {
+        await seed(
+          settings: const PrayerSettings(
+            method: PrayerMethod.kemenag,
+            asrMadhab: AsrMadhab.standard,
+            adjustments: PrayerAdjustments(),
+            location: jakarta,
+            remindersEnabled: true,
+            reminderLeadMinutes: 10,
+          ),
+        );
 
-      final armed = await repository.syncReminders(
-        _schedule(today),
-        await preferences.load(),
-      );
+        final armed = await repository.syncReminders(
+          _schedule(today),
+          await preferences.load(),
+        );
 
-      expect(armed, isTrue);
-      // 09:00 WIB: Subuh sudah lewat, Zuhur sampai Isya masih akan datang.
-      expect(scheduler.lastSync!.map((r) => r.kind), [
-        PrayerKind.dhuhr,
-        PrayerKind.asr,
-        PrayerKind.maghrib,
-        PrayerKind.isha,
-      ]);
-      expect(scheduler.lastSync!.first.timezoneId, 'Asia/Jakarta');
-    });
+        expect(armed, isTrue);
+        // 09:00 WIB: Subuh sudah lewat, Zuhur sampai Isya masih akan datang.
+        expect(scheduler.lastSync!.map((r) => r.kind), [
+          PrayerKind.dhuhr,
+          PrayerKind.asr,
+          PrayerKind.maghrib,
+          PrayerKind.isha,
+        ]);
+        expect(scheduler.lastSync!.first.timezoneId, 'Asia/Jakarta');
+      },
+    );
 
-    test('semua waktu sudah terlewat berarti tidak ada yang dijadwalkan', () async {
-      await seed(
-        settings: const PrayerSettings(
-          method: PrayerMethod.kemenag,
-          asrMadhab: AsrMadhab.standard,
-          adjustments: PrayerAdjustments(),
-          location: jakarta,
-          remindersEnabled: true,
-        ),
-      );
-      final lateClock = DateTime.utc(2026, 11, 20, 13); // 20:00 WIB
-      final repo = PrayerRepository(
-        client: source,
-        cache: cache,
-        preferences: preferences,
-        reminderScheduler: scheduler,
-        clock: () => lateClock,
-      );
+    test(
+      'semua waktu sudah terlewat berarti tidak ada yang dijadwalkan',
+      () async {
+        await seed(
+          settings: const PrayerSettings(
+            method: PrayerMethod.kemenag,
+            asrMadhab: AsrMadhab.standard,
+            adjustments: PrayerAdjustments(),
+            location: jakarta,
+            remindersEnabled: true,
+          ),
+        );
+        final lateClock = DateTime.utc(2026, 11, 20, 13); // 20:00 WIB
+        final repo = PrayerRepository(
+          client: source,
+          cache: cache,
+          preferences: preferences,
+          reminderScheduler: scheduler,
+          clock: () => lateClock,
+        );
 
-      final armed = await repo.syncReminders(
-        _schedule(today),
-        await preferences.load(),
-      );
-      expect(armed, isFalse);
-      expect(scheduler.lastSync, isEmpty);
-    });
+        final armed = await repo.syncReminders(
+          _schedule(today),
+          await preferences.load(),
+        );
+        expect(armed, isFalse);
+        expect(scheduler.lastSync, isEmpty);
+      },
+    );
   });
 
   test('pruneCache memakai masa simpan repositori', () async {

@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import '../../../app/app_theme.dart';
 import '../../../core/preferences/app_preferences.dart';
 import '../../about/presentation/about_screen.dart';
+import '../../hijri/presentation/hijri_calendar_screen.dart';
 import '../../memorization/data/memorization_repository.dart';
 import '../../memorization/domain/memorization_models.dart';
 import '../../memorization/presentation/memorization_home_screen.dart';
 import '../../prayer/data/prayer_repository.dart';
 import '../../prayer/presentation/prayer_times_screen.dart';
+import '../../qibla/presentation/qibla_screen.dart';
 import '../../reading/data/reading_repository.dart';
 import '../../reading/presentation/home_screen.dart';
 import '../../reading/presentation/reading_screen.dart';
@@ -59,9 +61,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Future<void> _openPrayerTimes() => Navigator.of(context).push<void>(
     MaterialPageRoute<void>(
-      builder: (_) =>
-          PrayerTimesScreen(repository: _prayerRepository),
+      builder: (_) => PrayerTimesScreen(repository: _prayerRepository),
     ),
+  );
+
+  Future<void> _openQibla() => Navigator.of(
+    context,
+  ).push<void>(MaterialPageRoute<void>(builder: (_) => const QiblaScreen()));
+
+  Future<void> _openHijriCalendar() => Navigator.of(context).push<void>(
+    MaterialPageRoute<void>(builder: (_) => const HijriCalendarScreen()),
   );
 
   Future<void> _openMemorization() => Navigator.of(context).push<void>(
@@ -133,6 +142,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           onOpenSettings: _openSettings,
           onOpenAbout: _openAbout,
           onOpenPrayerTimes: _openPrayerTimes,
+          onOpenQibla: _openQibla,
+          onOpenHijriCalendar: _openHijriCalendar,
         ),
       ],
     ),
@@ -591,11 +602,15 @@ class _MoreScreen extends StatelessWidget {
     required this.onOpenSettings,
     required this.onOpenAbout,
     required this.onOpenPrayerTimes,
+    required this.onOpenQibla,
+    required this.onOpenHijriCalendar,
   });
 
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenAbout;
   final VoidCallback onOpenPrayerTimes;
+  final VoidCallback onOpenQibla;
+  final VoidCallback onOpenHijriCalendar;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -612,13 +627,17 @@ class _MoreScreen extends StatelessWidget {
           subtitle: 'Jadwal lima waktu, hijriah, dan pengingat',
           onTap: onOpenPrayerTimes,
         ),
-        const _UnavailableAction(
+        _DashboardAction(
           icon: Icons.explore_outlined,
           title: 'Arah kiblat',
+          subtitle: 'Kompas perangkat atau dial manual',
+          onTap: onOpenQibla,
         ),
-        const _UnavailableAction(
+        _DashboardAction(
           icon: Icons.calendar_month_outlined,
           title: 'Kalender Hijriah',
+          subtitle: 'Tanggal Hijri, kalender bulanan, dan event penting',
+          onTap: onOpenHijriCalendar,
         ),
         const _UnavailableAction(
           icon: Icons.star_outline_rounded,

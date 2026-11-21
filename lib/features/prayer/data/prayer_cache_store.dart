@@ -43,7 +43,9 @@ class SqlitePrayerCacheStore implements PrayerCacheStore {
       'timezone_id': schedule.timezoneId,
       'offset_minutes': schedule.locationOffset.inMinutes,
       'events_json': jsonEncode(_encodeEvents(schedule)),
-      'hijri_json': schedule.hijri == null ? null : jsonEncode(_encodeHijri(schedule.hijri!)),
+      'hijri_json': schedule.hijri == null
+          ? null
+          : jsonEncode(_encodeHijri(schedule.hijri!)),
       'fetched_at': (schedule.fetchedAt ?? DateTime.now().toUtc())
           .toIso8601String(),
     }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -80,13 +82,14 @@ class SqlitePrayerCacheStore implements PrayerCacheStore {
     return parts.length >= 2 ? parts[1] : cacheKey;
   }
 
-  static List<Map<String, String>> _encodeEvents(PrayerDaySchedule schedule) => [
-    for (final event in schedule.events)
-      {
-        'field': event.kind.apiField,
-        'at': _formatIso(event.instant, event.locationOffset),
-      },
-  ];
+  static List<Map<String, String>> _encodeEvents(PrayerDaySchedule schedule) =>
+      [
+        for (final event in schedule.events)
+          {
+            'field': event.kind.apiField,
+            'at': _formatIso(event.instant, event.locationOffset),
+          },
+      ];
 
   static String _formatIso(DateTime instant, Duration offset) {
     final local = instant.toUtc().add(offset);
@@ -137,11 +140,7 @@ class SqlitePrayerCacheStore implements PrayerCacheStore {
       final parsed = AladhanPrayerClient.parseInstant(raw);
       if (parsed == null) continue;
       events.add(
-        PrayerEvent(
-          kind: kind,
-          instant: parsed.$1,
-          locationOffset: parsed.$2,
-        ),
+        PrayerEvent(kind: kind, instant: parsed.$1, locationOffset: parsed.$2),
       );
     }
     Map<String, dynamic>? hijriMap;

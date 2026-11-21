@@ -6,7 +6,10 @@ import 'package:geolocator/geolocator.dart';
 import '../domain/prayer_models.dart';
 
 enum LocationFailureKind {
-  serviceDisabled('Lokasi perangkat belum aktif.', 'Aktifkan layanan lokasi, lalu coba lagi.'),
+  serviceDisabled(
+    'Lokasi perangkat belum aktif.',
+    'Aktifkan layanan lokasi, lalu coba lagi.',
+  ),
   permissionDenied(
     'Izin lokasi ditolak.',
     'Anda masih bisa memasukkan kota atau koordinat secara manual.',
@@ -19,7 +22,10 @@ enum LocationFailureKind {
     'Status izin lokasi tidak dapat dibaca.',
     'Coba lagi, atau isi lokasi manual.',
   ),
-  timeout('Permintaan lokasi melebihi batas waktu.', 'Coba lagi di dekat jendela atau area terbuka.'),
+  timeout(
+    'Permintaan lokasi melebihi batas waktu.',
+    'Coba lagi di dekat jendela atau area terbuka.',
+  ),
   unavailable(
     'Perangkat tidak memberikan posisi.',
     'Peramban atau perangkat menolak memberi lokasi; gunakan input manual.',
@@ -51,8 +57,7 @@ abstract interface class DeviceLocationProvider {
   Future<WorshipLocation> locate();
 }
 
-typedef PositionReader =
-    Future<Position> Function(LocationSettings settings);
+typedef PositionReader = Future<Position> Function(LocationSettings settings);
 
 class GeolocatorDeviceLocation implements DeviceLocationProvider {
   const GeolocatorDeviceLocation({PositionReader? readPosition})

@@ -3,7 +3,7 @@ import 'package:tilawahku/core/database/database_schema.dart';
 
 void main() {
   test('tajwid progress uses an additive schema', () {
-    expect(DatabaseSchema.version, 7);
+    expect(DatabaseSchema.version, 9);
     expect(DatabaseSchema.tajwidCreateStatements, hasLength(1));
     expect(
       DatabaseSchema.createStatements,

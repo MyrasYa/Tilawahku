@@ -54,7 +54,9 @@ void main() {
       PrayerKind.isha,
     ]);
     expect(
-      reminders.every((reminder) => reminder.fireAt.isAfter(DateTime.utc(2026, 11, 20, 9))),
+      reminders.every(
+        (reminder) => reminder.fireAt.isAfter(DateTime.utc(2026, 11, 20, 9)),
+      ),
       isTrue,
     );
   });
@@ -67,13 +69,20 @@ void main() {
   });
 
   test('lead dijepit ke rentang yang masih masuk akal', () {
-    expect(plan(now: DateTime.utc(2026, 11, 19, 20), lead: 0).first.fireAt,
-        DateTime.utc(2026, 11, 19, 21, 2));
-    expect(plan(now: DateTime.utc(2026, 11, 19, 20), lead: -5).first.fireAt,
-        DateTime.utc(2026, 11, 19, 21, 2));
+    expect(
+      plan(now: DateTime.utc(2026, 11, 19, 20), lead: 0).first.fireAt,
+      DateTime.utc(2026, 11, 19, 21, 2),
+    );
+    expect(
+      plan(now: DateTime.utc(2026, 11, 19, 20), lead: -5).first.fireAt,
+      DateTime.utc(2026, 11, 19, 21, 2),
+    );
     final clamped = plan(now: DateTime.utc(2026, 11, 19, 20), lead: 999).first;
     expect(clamped.fireAt, DateTime.utc(2026, 11, 19, 20, 3));
-    expect(clamped.body, contains('${PrayerSettings.maxLeadMinutes} menit lagi'));
+    expect(
+      clamped.body,
+      contains('${PrayerSettings.maxLeadMinutes} menit lagi'),
+    );
   });
 
   test('tanpa pilihan waktu, semua waktu sholat diingatkan dan terurut', () {
@@ -114,7 +123,10 @@ void main() {
   });
 
   test('isi tanpa nama lokasi tidak menyisakan pemisah', () {
-    expect(plan(now: DateTime.utc(2026, 11, 19, 20)).first.body, isNot(contains('•')));
+    expect(
+      plan(now: DateTime.utc(2026, 11, 19, 20)).first.body,
+      isNot(contains('•')),
+    );
   });
 
   test('id notifikasi stabil dan berbeda per waktu sholat', () {

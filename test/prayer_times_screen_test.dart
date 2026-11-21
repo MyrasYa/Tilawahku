@@ -64,10 +64,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
   }
 
-  void buildController({
-    DeviceLocationProvider? location,
-    DateTime? clock,
-  }) {
+  void buildController({DeviceLocationProvider? location, DateTime? clock}) {
     if (clock != null) clockRef.value = clock;
     controller = PrayerTimesController(
       repository: repository,
@@ -114,20 +111,24 @@ void main() {
     await pumpScreen(tester);
   }
 
-  testWidgets('tanpa lokasi: layar meminta lokasi, tidak ada permintaan jaringan', (
-    tester,
-  ) async {
-    buildController();
-    await pumpScreen(tester);
+  testWidgets(
+    'tanpa lokasi: layar meminta lokasi, tidak ada permintaan jaringan',
+    (tester) async {
+      buildController();
+      await pumpScreen(tester);
 
-    expect(find.text('Tentukan lokasi untuk melihat waktu salat'), findsOneWidget);
-    expect(find.text('Pilih kota atau isi koordinat'), findsOneWidget);
-    expect(
-      find.textContaining('Tidak ada riwayat lokasi yang dikirim'),
-      findsOneWidget,
-    );
-    expect(source.calls, 0);
-  });
+      expect(
+        find.text('Tentukan lokasi untuk melihat waktu salat'),
+        findsOneWidget,
+      );
+      expect(find.text('Pilih kota atau isi koordinat'), findsOneWidget);
+      expect(
+        find.textContaining('Tidak ada riwayat lokasi yang dikirim'),
+        findsOneWidget,
+      );
+      expect(source.calls, 0);
+    },
+  );
 
   testWidgets('izin lokasi ditolak: alasan dan jalan manual ditampilkan', (
     tester,
@@ -172,32 +173,43 @@ void main() {
     expect(find.text('Atur lokasi'), findsNothing);
   });
 
-  testWidgets('jadwal tampil dengan hitung mundur, hijriah, dan catatan sumber', (
-    tester,
-  ) async {
-    await startWithLocation(tester);
+  testWidgets(
+    'jadwal tampil dengan hitung mundur, hijriah, dan catatan sumber',
+    (tester) async {
+      await startWithLocation(tester);
 
-    expect(find.text('Menuju Zuhur'), findsOneWidget);
-    expect(find.text('02:38:00'), findsOneWidget);
-    expect(find.text('Sedang berjalan: Subuh'), findsOneWidget);
-    expect(find.text('10 Jumadil Akhir 1448 H'), findsOneWidget);
-    expect(
-      find.textContaining('metode Kementerian Agama Republik Indonesia'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('dari server'), findsOneWidget);
-    expect(find.textContaining('20 November 2026'), findsOneWidget);
+      expect(find.text('Menuju Zuhur'), findsOneWidget);
+      expect(find.text('02:38:00'), findsOneWidget);
+      expect(find.text('Sedang berjalan: Subuh'), findsOneWidget);
+      expect(find.text('10 Jumadil Akhir 1448 H'), findsOneWidget);
+      expect(
+        find.textContaining('metode Kementerian Agama Republik Indonesia'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('dari server'), findsOneWidget);
+      expect(find.textContaining('20 November 2026'), findsOneWidget);
 
-    for (final label in ['Subuh', 'Syuruk', 'Zuhur', 'Asar', 'Magrib', 'Isya']) {
-      expect(find.text(label), findsOneWidget, reason: 'waktu $label hilang');
-    }
-    expect(find.text('04:03'), findsOneWidget);
-    expect(find.text('19:05'), findsOneWidget);
-    expect(find.text('Bukan waktu salat'), findsOneWidget);
+      for (final label in [
+        'Subuh',
+        'Syuruk',
+        'Zuhur',
+        'Asar',
+        'Magrib',
+        'Isya',
+      ]) {
+        expect(find.text(label), findsOneWidget, reason: 'waktu $label hilang');
+      }
+      expect(find.text('04:03'), findsOneWidget);
+      expect(find.text('19:05'), findsOneWidget);
+      expect(find.text('Bukan waktu salat'), findsOneWidget);
 
-    expect(find.textContaining('AlAdhan API v1'), findsOneWidget);
-    expect(find.textContaining('bukan penetapan resmi pemerintah'), findsOneWidget);
-  });
+      expect(find.textContaining('AlAdhan API v1'), findsOneWidget);
+      expect(
+        find.textContaining('bukan penetapan resmi pemerintah'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('platform tanpa penjadwal tidak menjanjikan pengingat', (
     tester,
@@ -225,58 +237,67 @@ void main() {
     expect(scheduler.clears, 0);
   });
 
-  testWidgets('pengingat aktif menyebut lead menit dan hanya waktu yang tersisa', (
-    tester,
-  ) async {
-    await startWithLocation(
-      tester,
-      settings: const PrayerSettings(
-        method: PrayerMethod.kemenag,
-        asrMadhab: AsrMadhab.standard,
-        adjustments: PrayerAdjustments(),
-        location: jakarta,
-        remindersEnabled: true,
-        reminderLeadMinutes: 15,
-      ),
-    );
+  testWidgets(
+    'pengingat aktif menyebut lead menit dan hanya waktu yang tersisa',
+    (tester) async {
+      await startWithLocation(
+        tester,
+        settings: const PrayerSettings(
+          method: PrayerMethod.kemenag,
+          asrMadhab: AsrMadhab.standard,
+          adjustments: PrayerAdjustments(),
+          location: jakarta,
+          remindersEnabled: true,
+          reminderLeadMinutes: 15,
+        ),
+      );
 
-    expect(
-      find.text('Pengingat dijadwalkan 15 menit sebelum waktu salat.'),
-      findsOneWidget,
-    );
-    expect(scheduler.lastSync!.map((reminder) => reminder.kind), [
-      PrayerKind.dhuhr,
-      PrayerKind.asr,
-      PrayerKind.maghrib,
-      PrayerKind.isha,
-    ]);
-    expect(scheduler.lastSync!.first.fireAt, DateTime.utc(2026, 11, 20, 4, 23));
-  });
+      expect(
+        find.text('Pengingat dijadwalkan 15 menit sebelum waktu salat.'),
+        findsOneWidget,
+      );
+      expect(scheduler.lastSync!.map((reminder) => reminder.kind), [
+        PrayerKind.dhuhr,
+        PrayerKind.asr,
+        PrayerKind.maghrib,
+        PrayerKind.isha,
+      ]);
+      expect(
+        scheduler.lastSync!.first.fireAt,
+        DateTime.utc(2026, 11, 20, 4, 23),
+      );
+    },
+  );
 
-  testWidgets('setelah Isya hitung mundur menuju Subuh besok dan tanpa pengingat', (
-    tester,
-  ) async {
-    await startWithLocation(
-      tester,
-      clock: afterIsha,
-      settings: const PrayerSettings(
-        method: PrayerMethod.kemenag,
-        asrMadhab: AsrMadhab.standard,
-        adjustments: PrayerAdjustments(),
-        location: jakarta,
-        remindersEnabled: true,
-      ),
-    );
+  testWidgets(
+    'setelah Isya hitung mundur menuju Subuh besok dan tanpa pengingat',
+    (tester) async {
+      await startWithLocation(
+        tester,
+        clock: afterIsha,
+        settings: const PrayerSettings(
+          method: PrayerMethod.kemenag,
+          asrMadhab: AsrMadhab.standard,
+          adjustments: PrayerAdjustments(),
+          location: jakarta,
+          remindersEnabled: true,
+        ),
+      );
 
-    expect(find.text('Menuju Subuh'), findsOneWidget);
-    expect(find.text('08:03:00'), findsOneWidget);
-    expect(
-      find.text('Tidak ada pengingat tersisa untuk jadwal yang tampil.'),
-      findsOneWidget,
-    );
-    expect(scheduler.lastSync, isEmpty);
-    expect(source.calls, 2, reason: 'hari ini + satu permintaan hari berikutnya');
-  });
+      expect(find.text('Menuju Subuh'), findsOneWidget);
+      expect(find.text('08:03:00'), findsOneWidget);
+      expect(
+        find.text('Tidak ada pengingat tersisa untuk jadwal yang tampil.'),
+        findsOneWidget,
+      );
+      expect(scheduler.lastSync, isEmpty);
+      expect(
+        source.calls,
+        2,
+        reason: 'hari ini + satu permintaan hari berikutnya',
+      );
+    },
+  );
 
   testWidgets('hari berikutnya dilayani dari pratarik tanpa permintaan baru', (
     tester,
@@ -340,58 +361,64 @@ void main() {
     expect(find.textContaining('Perangkat sedang luring'), findsOneWidget);
   });
 
-  testWidgets('luring tanpa cache menampilkan kegagalan lalu pulih setelah coba lagi', (
-    tester,
-  ) async {
-    await repository.saveLocation(jakarta);
-    source.failure = const PrayerDataSourceException(
-      PrayerDataFailureKind.server,
-      'Layanan jadwal sholat sedang tidak dapat dihubungi.',
-    );
-    buildController();
-    await pumpScreen(tester);
+  testWidgets(
+    'luring tanpa cache menampilkan kegagalan lalu pulih setelah coba lagi',
+    (tester) async {
+      await repository.saveLocation(jakarta);
+      source.failure = const PrayerDataSourceException(
+        PrayerDataFailureKind.server,
+        'Layanan jadwal sholat sedang tidak dapat dihubungi.',
+      );
+      buildController();
+      await pumpScreen(tester);
 
-    expect(
-      find.text('Layanan jadwal sholat sedang tidak dapat dihubungi.'),
-      findsOneWidget,
-    );
-    expect(find.text('Coba lagi'), findsOneWidget);
-    expect(find.text('Ganti lokasi'), findsOneWidget);
-    expect(find.text('Menuju Zuhur'), findsNothing);
+      expect(
+        find.text('Layanan jadwal sholat sedang tidak dapat dihubungi.'),
+        findsOneWidget,
+      );
+      expect(find.text('Coba lagi'), findsOneWidget);
+      expect(find.text('Ganti lokasi'), findsOneWidget);
+      expect(find.text('Menuju Zuhur'), findsNothing);
 
-    source.failure = null;
-    await tester.tap(find.text('Coba lagi'));
-    await settle(tester);
+      source.failure = null;
+      await tester.tap(find.text('Coba lagi'));
+      await settle(tester);
 
-    expect(find.text('Menuju Zuhur'), findsOneWidget);
-    expect(find.text('Coba lagi'), findsNothing);
-  });
+      expect(find.text('Menuju Zuhur'), findsOneWidget);
+      expect(find.text('Coba lagi'), findsNothing);
+    },
+  );
 
-  testWidgets('ganti metode memakai kunci cache baru, kembali tidak mengulang permintaan', (
-    tester,
-  ) async {
-    await startWithLocation(tester);
-    final before = source.calls;
+  testWidgets(
+    'ganti metode memakai kunci cache baru, kembali tidak mengulang permintaan',
+    (tester) async {
+      await startWithLocation(tester);
+      final before = source.calls;
 
-    await controller.selectMethod(PrayerMethod.byId(3));
-    await settle(tester);
+      await controller.selectMethod(PrayerMethod.byId(3));
+      await settle(tester);
 
-    expect(source.lastRequests.last, contains('|3|'));
-    expect(find.textContaining('metode Muslim World League'), findsOneWidget);
-    // Kunci baru berarti data baru: hari ini dan satu hari berikutnya saja.
-    expect(source.calls, before + 2);
+      expect(source.lastRequests.last, contains('|3|'));
+      expect(find.textContaining('metode Muslim World League'), findsOneWidget);
+      // Kunci baru berarti data baru: hari ini dan satu hari berikutnya saja.
+      expect(source.calls, before + 2);
 
-    // Kembali ke metode awal: kedua tanggal sudah tersimpan dan masih segar.
-    await controller.selectMethod(PrayerMethod.kemenag);
-    await settle(tester);
-    expect(source.calls, before + 2, reason: 'cache segar bukan alasan unduh ulang');
+      // Kembali ke metode awal: kedua tanggal sudah tersimpan dan masih segar.
+      await controller.selectMethod(PrayerMethod.kemenag);
+      await settle(tester);
+      expect(
+        source.calls,
+        before + 2,
+        reason: 'cache segar bukan alasan unduh ulang',
+      );
 
-    // Tombol muat ulang memang sengaja menghubungi server, tapi hanya untuk
-    // tanggal yang tampil.
-    await controller.refresh();
-    await settle(tester);
-    expect(source.calls, before + 3);
-  });
+      // Tombol muat ulang memang sengaja menghubungi server, tapi hanya untuk
+      // tanggal yang tampil.
+      await controller.refresh();
+      await settle(tester);
+      expect(source.calls, before + 3);
+    },
+  );
 
   testWidgets('penyesuaian menit menggeser tampilan tanpa permintaan ulang', (
     tester,
@@ -404,7 +431,11 @@ void main() {
 
     expect(find.text('04:00'), findsOneWidget);
     expect(find.text('Disesuaikan -3 menit'), findsOneWidget);
-    expect(source.calls, before, reason: 'penyesuaian bukan alasan unduh ulang');
+    expect(
+      source.calls,
+      before,
+      reason: 'penyesuaian bukan alasan unduh ulang',
+    );
   });
 }
 
@@ -553,7 +584,8 @@ class _FakeScheduler implements PrayerReminderScheduler {
   }
 
   @override
-  Future<void> sync(List<PrayerReminder> reminders) async => lastSync = reminders;
+  Future<void> sync(List<PrayerReminder> reminders) async =>
+      lastSync = reminders;
 
   @override
   Future<void> clear() async => clears++;

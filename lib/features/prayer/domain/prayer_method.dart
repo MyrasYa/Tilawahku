@@ -27,11 +27,9 @@ class PrayerMethod {
       ? 'sudut ${_angle(ishaAngle!)}'
       : '$ishaAfterMaghrib menit setelah Magrib';
 
-  String get angleSummary =>
-      'Subuh ${_angle(fajrAngle)} · Isya $ishaRule';
+  String get angleSummary => 'Subuh ${_angle(fajrAngle)} · Isya $ishaRule';
 
-  static String _angle(double value) =>
-      value == value.roundToDouble()
+  static String _angle(double value) => value == value.roundToDouble()
       ? '${value.toStringAsFixed(0)}°'
       : '${value.toStringAsFixed(1)}°';
 

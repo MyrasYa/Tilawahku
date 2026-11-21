@@ -41,8 +41,7 @@ class PrayerRepository {
   }) : _client = client ?? AladhanPrayerClient(),
        _cache = cache ?? SqlitePrayerCacheStore(AppDatabase.instance),
        _preferences = preferences ?? PrayerPreferences(const AppPreferences()),
-       _scheduler =
-           reminderScheduler ?? createPrayerReminderScheduler(),
+       _scheduler = reminderScheduler ?? createPrayerReminderScheduler(),
        _clock = clock ?? DateTime.now;
 
   /// Jadwal lama dianggap masih layak untuk hari ini selama tidak melebihi ini.

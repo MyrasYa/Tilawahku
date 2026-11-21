@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../hijri/domain/hijri_models.dart';
 import '../domain/prayer_method.dart';
 import '../domain/prayer_models.dart';
 
@@ -280,6 +281,155 @@ class AladhanPrayerClient implements PrayerDaySource {
           ? (raw['holidays'] as List).map((e) => '$e').toList()
           : const [],
     );
+  }
+
+  /// Parse respons kalender bulanan dari AlAdhan.
+  static HijriCalendarMonth parseCalendar(
+    Map<String, dynamic> payload,
+    int gregorianYear,
+    int gregorianMonth,
+  ) {
+    return _parseCalendar(payload, gregorianYear, gregorianMonth);
+  }
+
+  /// Parse respons kalender bulanan dari AlAdhan (internal).
+  static HijriCalendarMonth _parseCalendar(
+    Map<String, dynamic> payload,
+    int gregorianYear,
+    int gregorianMonth,
+  ) {
+    final code = payload['code'];
+    final status = payload['status'];
+    if (code is! num || code.toInt() != 200 || status != 'OK') {
+      throw PrayerDataSourceException(
+        PrayerDataFailureKind.rejected,
+        'Layanan kalender menolak permintaan (status $status).',
+      );
+    }
+    final data = payload['data'];
+    if (data is! List) {
+      throw const PrayerDataSourceException(
+        PrayerDataFailureKind.malformed,
+        'Kalender Hijri tidak dapat dibaca: struktur respons tidak dikenal.',
+      );
+    }
+
+    final List<HijriCalendarDay> days = [];
+    HijriCalendarDay? currentHijriDate;
+    final now = DateTime.now();
+
+    for (final dayData in data) {
+      if (dayData is! Map) continue;
+      final date = dayData['date'];
+      if (date is! Map) continue;
+
+      final gregorian = date['gregorian'];
+      if (gregorian is! Map) continue;
+
+      final gregorianDay = gregorian['day'];
+      final gregorianMonthNum = gregorian['month'] is Map
+          ? (gregorian['month'] as Map)['number']
+          : null;
+      final gregorianYearNum = gregorian['year'];
+
+      if (gregorianDay is! int ||
+          gregorianMonthNum is! int ||
+          gregorianYearNum is! int) {
+        continue;
+      }
+
+      final hijri = date['hijri'];
+      if (hijri is! Map) continue;
+
+      final hijriDay = int.tryParse('${hijri['day']}');
+      final hijriMonth = hijri['month'] is Map
+          ? int.tryParse('${(hijri['month'] as Map)['number']}')
+          : null;
+      final hijriYear = int.tryParse('${hijri['year']}');
+
+      if (hijriDay == null || hijriMonth == null || hijriYear == null) {
+        continue;
+      }
+
+      final monthNameEn = hijri['month'] is Map
+          ? '${(hijri['month'] as Map)['en'] ?? ''}'
+          : '';
+      final monthNameAr = hijri['month'] is Map
+          ? '${(hijri['month'] as Map)['ar'] ?? ''}'
+          : '';
+      final weekdayEn = hijri['weekday'] is Map
+          ? '${(hijri['weekday'] as Map)['en'] ?? ''}'
+          : '';
+      final weekdayAr = hijri['weekday'] is Map
+          ? '${(hijri['weekday'] as Map)['ar'] ?? ''}'
+          : '';
+
+      // Map nama bulan Inggris ke Indonesia
+      final monthNameId = _mapMonthNameId(monthNameEn);
+
+      final dateKey =
+          '$gregorianYearNum-${gregorianMonthNum.toString().padLeft(2, '0')}-${gregorianDay.toString().padLeft(2, '0')}';
+      final isToday = dateKey == _dateKeyFor(now);
+
+      final day = HijriCalendarDay(
+        gregorianDate: dateKey,
+        hijriDay: hijriDay,
+        hijriMonth: hijriMonth,
+        hijriYear: hijriYear,
+        hijriMonthNameEn: monthNameEn,
+        hijriMonthNameAr: monthNameAr,
+        hijriMonthNameId: monthNameId,
+        weekdayEn: weekdayEn,
+        weekdayAr: weekdayAr,
+        isToday: isToday,
+        events: _mapEvents(hijriDay, hijriMonth),
+      );
+
+      days.add(day);
+
+      if (isToday) {
+        currentHijriDate = day;
+      }
+    }
+
+    return HijriCalendarMonth(
+      gregorianYear: gregorianYear,
+      gregorianMonth: gregorianMonth,
+      days: days,
+      currentHijriDate: currentHijriDate,
+    );
+  }
+
+  /// Map nama bulan Hijri dari Inggris ke Indonesia.
+  static String _mapMonthNameId(String enName) {
+    final mapping = {
+      'Muharram': 'Muharram',
+      'Safar': 'Safar',
+      'Rabiul Awal': 'Rabiul Awal',
+      'Rabiul Akhir': 'Rabiul Akhir',
+      'Jumādá al-ūlá': 'Jumadil Ula',
+      'Jumādá al-ākhirah': 'Jumadil Akhir',
+      'Rajab': 'Rajab',
+      "Sya'ban": 'Sya\'ban',
+      'Ramadan': 'Ramadan',
+      'Shawwal': 'Syawal',
+      "Dzulqa'dah": 'Dzulqa\'dah',
+      'Dzulhijjah': 'Dzulhijjah',
+    };
+    return mapping[enName] ?? enName;
+  }
+
+  /// Map tanggal Hijri ke event Islam penting.
+  static List<IslamicEvent> _mapEvents(int hijriDay, int hijriMonth) {
+    final key =
+        '${hijriMonth.toString().padLeft(2, '0')}-${hijriDay.toString().padLeft(2, '0')}';
+    final event = IslamicEvents.instance.findByHijriKey(key);
+    return event != null ? [event] : const [];
+  }
+
+  /// Format tanggal yyyy-MM-dd.
+  static String _dateKeyFor(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   void close() => _dio.close(force: true);

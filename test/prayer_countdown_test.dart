@@ -13,7 +13,14 @@ void main() {
 
   group('sortedSalatEvents', () {
     test('membuang Syuruk dan mengurutkan berdasarkan instan', () {
-      final shuffled = [today[4], today[0], today[1], today[3], today[2], today[5]];
+      final shuffled = [
+        today[4],
+        today[0],
+        today[1],
+        today[3],
+        today[2],
+        today[5],
+      ];
       final sorted = sortedSalatEvents(shuffled);
       expect(sorted.map((event) => event.kind), [
         PrayerKind.fajr,
@@ -37,32 +44,41 @@ void main() {
       expect(upcoming.previous, isNull);
     });
 
-    test('di tengah hari menyebut sholat berikutnya dan yang sedang berjalan', () {
-      // 2026-11-20 09:00 UTC = 16:00 WIB: Asar sudah lewat, Magrib berikutnya.
-      final upcoming = nextSalatEvent(today, DateTime.utc(2026, 11, 20, 9))!;
-      expect(upcoming.kind, PrayerKind.maghrib);
-      expect(upcoming.previous?.kind, PrayerKind.asr);
-      expect(upcoming.remaining, const Duration(hours: 1, minutes: 51));
-    });
+    test(
+      'di tengah hari menyebut sholat berikutnya dan yang sedang berjalan',
+      () {
+        // 2026-11-20 09:00 UTC = 16:00 WIB: Asar sudah lewat, Magrib berikutnya.
+        final upcoming = nextSalatEvent(today, DateTime.utc(2026, 11, 20, 9))!;
+        expect(upcoming.kind, PrayerKind.maghrib);
+        expect(upcoming.previous?.kind, PrayerKind.asr);
+        expect(upcoming.remaining, const Duration(hours: 1, minutes: 51));
+      },
+    );
 
     test('tepat pada waktu sholat tidak lagi dihitung sebagai mendatang', () {
-      final upcoming = nextSalatEvent(today, DateTime.utc(2026, 11, 20, 4, 38))!;
+      final upcoming = nextSalatEvent(
+        today,
+        DateTime.utc(2026, 11, 20, 4, 38),
+      )!;
       expect(upcoming.kind, PrayerKind.asr);
     });
 
-    test('setelah Isya hari ini butuh hari berikutnya agar hitung mundur tetap ada', () {
-      final lateNight = DateTime.utc(2026, 11, 20, 13); // 20:00 WIB
-      expect(nextSalatEvent(today, lateNight), isNull);
-      expect(needsFollowingDay(today, lateNight), isTrue);
+    test(
+      'setelah Isya hari ini butuh hari berikutnya agar hitung mundur tetap ada',
+      () {
+        final lateNight = DateTime.utc(2026, 11, 20, 13); // 20:00 WIB
+        expect(nextSalatEvent(today, lateNight), isNull);
+        expect(needsFollowingDay(today, lateNight), isTrue);
 
-      final combined = [...today, ...tomorrow];
-      final upcoming = nextSalatEvent(combined, lateNight)!;
-      expect(upcoming.kind, PrayerKind.fajr);
-      expect(upcoming.event.instant, DateTime.utc(2026, 11, 20, 21, 3));
-      expect(upcoming.previous?.kind, PrayerKind.isha);
-      expect(upcoming.remaining, const Duration(hours: 8, minutes: 3));
-      expect(needsFollowingDay(combined, lateNight), isFalse);
-    });
+        final combined = [...today, ...tomorrow];
+        final upcoming = nextSalatEvent(combined, lateNight)!;
+        expect(upcoming.kind, PrayerKind.fajr);
+        expect(upcoming.event.instant, DateTime.utc(2026, 11, 20, 21, 3));
+        expect(upcoming.previous?.kind, PrayerKind.isha);
+        expect(upcoming.remaining, const Duration(hours: 8, minutes: 3));
+        expect(needsFollowingDay(combined, lateNight), isFalse);
+      },
+    );
 
     test('sebelum semua kejadian yang dikenal tidak ada jendela berjalan', () {
       final early = DateTime.utc(2026, 11, 19, 20); // 03:00 WIB
@@ -97,7 +113,10 @@ void main() {
       );
       // 2026-11-19 17:00 UTC tepat tengah malam WIB.
       expect(dateKeyFor(DateTime.utc(2026, 11, 19, 17), _offset), '2026-11-20');
-      expect(dateKeyFor(DateTime.utc(2026, 11, 20, 16, 59), _offset), '2026-11-20');
+      expect(
+        dateKeyFor(DateTime.utc(2026, 11, 20, 16, 59), _offset),
+        '2026-11-20',
+      );
     });
 
     test('offset negatif juga benar', () {
@@ -141,7 +160,10 @@ void main() {
 
     test('durasi ringkas tidak pernah negatif', () {
       expect(formatDurationShort(const Duration(minutes: 45)), '45 menit');
-      expect(formatDurationShort(const Duration(minutes: 90)), '1 jam 30 menit');
+      expect(
+        formatDurationShort(const Duration(minutes: 90)),
+        '1 jam 30 menit',
+      );
       expect(formatDurationShort(const Duration(minutes: 120)), '2 jam');
       expect(formatDurationShort(const Duration(seconds: -10)), '0 menit');
     });

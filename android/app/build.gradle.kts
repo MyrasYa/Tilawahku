@@ -29,6 +29,13 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+        // sherpa_onnx mengirim paket ffiPlugin per ABI (total 109,1 MB .so), jadi
+        // tanpa filter semua library ASR masuk APK. x86/x86_64 sengaja tidak
+        // dibawa; tambahkan "x86_64" di sini hanya bila pengujian memakai
+        // emulator x86_64.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     buildTypes {

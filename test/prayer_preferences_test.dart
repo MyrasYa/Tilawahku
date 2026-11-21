@@ -21,19 +21,22 @@ void main() {
   group('PrayerPreferences', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
 
-    test('tanpa nilai tersimpan memakai aturan Indonesia dan tanpa pengingat', () async {
-      const preferences = PrayerPreferences(AppPreferences());
-      final settings = await preferences.load();
+    test(
+      'tanpa nilai tersimpan memakai aturan Indonesia dan tanpa pengingat',
+      () async {
+        const preferences = PrayerPreferences(AppPreferences());
+        final settings = await preferences.load();
 
-      expect(settings.method, PrayerMethod.kemenag);
-      expect(settings.asrMadhab, AsrMadhab.standard);
-      expect(settings.adjustments.isEmpty, isTrue);
-      expect(settings.location, isNull);
-      expect(settings.hasValidLocation, isFalse);
-      expect(settings.remindersEnabled, isFalse);
-      expect(settings.reminderLeadMinutes, 10);
-      expect(settings.reminderKinds, isEmpty);
-    });
+        expect(settings.method, PrayerMethod.kemenag);
+        expect(settings.asrMadhab, AsrMadhab.standard);
+        expect(settings.adjustments.isEmpty, isTrue);
+        expect(settings.location, isNull);
+        expect(settings.hasValidLocation, isFalse);
+        expect(settings.remindersEnabled, isFalse);
+        expect(settings.reminderLeadMinutes, 10);
+        expect(settings.reminderKinds, isEmpty);
+      },
+    );
 
     test('semua pengaturan dipulang-simpan utuh', () async {
       const preferences = PrayerPreferences(AppPreferences());
@@ -64,62 +67,80 @@ void main() {
       expect(loaded.reminderKinds, {PrayerKind.fajr, PrayerKind.isha});
     });
 
-    test('nilai rusak dibaca sebagai default, bukan membuat layar gagal', () async {
-      SharedPreferences.setMockInitialValues({
-        'prayer_method_id': 999,
-        'prayer_asr_madhab': 'mazhab-abstrak',
-        'prayer_adjustments': 'bukan json',
-        'prayer_location': '{"name":"Entah","latitude":120.0,"longitude":0.0}',
-        'prayer_reminder_lead_minutes': 999,
-        'prayer_reminder_kinds': '["sunrise","fajr","tidak-ada"]',
-      });
-      const preferences = PrayerPreferences(AppPreferences());
-      final settings = await preferences.load();
+    test(
+      'nilai rusak dibaca sebagai default, bukan membuat layar gagal',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'prayer_method_id': 999,
+          'prayer_asr_madhab': 'mazhab-abstrak',
+          'prayer_adjustments': 'bukan json',
+          'prayer_location':
+              '{"name":"Entah","latitude":120.0,"longitude":0.0}',
+          'prayer_reminder_lead_minutes': 999,
+          'prayer_reminder_kinds': '["sunrise","fajr","tidak-ada"]',
+        });
+        const preferences = PrayerPreferences(AppPreferences());
+        final settings = await preferences.load();
 
-      expect(settings.method, PrayerMethod.defaultMethod);
-      expect(settings.asrMadhab, AsrMadhab.standard);
-      expect(settings.adjustments.isEmpty, isTrue);
-      expect(settings.location, isNull, reason: 'koordinat di luar rentang');
-      expect(settings.reminderLeadMinutes, PrayerSettings.maxLeadMinutes);
-      expect(settings.reminderKinds, {PrayerKind.fajr});
-    });
+        expect(settings.method, PrayerMethod.defaultMethod);
+        expect(settings.asrMadhab, AsrMadhab.standard);
+        expect(settings.adjustments.isEmpty, isTrue);
+        expect(settings.location, isNull, reason: 'koordinat di luar rentang');
+        expect(settings.reminderLeadMinutes, PrayerSettings.maxLeadMinutes);
+        expect(settings.reminderKinds, {PrayerKind.fajr});
+      },
+    );
 
     test('lead negatif kembali ke bawaan', () async {
-      SharedPreferences.setMockInitialValues({'prayer_reminder_lead_minutes': -5});
-      final settings = await const PrayerPreferences(
-        AppPreferences(),
-      ).load();
+      SharedPreferences.setMockInitialValues({
+        'prayer_reminder_lead_minutes': -5,
+      });
+      final settings = await const PrayerPreferences(AppPreferences()).load();
       expect(settings.reminderLeadMinutes, 10);
     });
 
-    test('lokasi bisa disimpan dan dihapus terpisah dari pengaturan lain', () async {
-      const preferences = PrayerPreferences(AppPreferences());
-      await preferences.saveLocation(jakarta);
-      expect((await preferences.load()).location?.name, 'Jakarta');
+    test(
+      'lokasi bisa disimpan dan dihapus terpisah dari pengaturan lain',
+      () async {
+        const preferences = PrayerPreferences(AppPreferences());
+        await preferences.saveLocation(jakarta);
+        expect((await preferences.load()).location?.name, 'Jakarta');
 
-      await preferences.clearLocation();
-      final after = await preferences.load();
-      expect(after.location, isNull);
-      expect(after.method, PrayerMethod.kemenag, reason: 'pengaturan lain utuh');
-    });
+        await preferences.clearLocation();
+        final after = await preferences.load();
+        expect(after.location, isNull);
+        expect(
+          after.method,
+          PrayerMethod.kemenag,
+          reason: 'pengaturan lain utuh',
+        );
+      },
+    );
 
-    test('kunci pref diberi namespace prayer_ agar tidak menimpa fitur lama', () async {
-      final prefs = await SharedPreferences.getInstance();
-      await const PrayerPreferences(AppPreferences()).save(
-        const PrayerSettings(
-          method: PrayerMethod.kemenag,
-          asrMadhab: AsrMadhab.standard,
-          adjustments: PrayerAdjustments(),
-          location: jakarta,
-        ),
-      );
-      final keys = prefs.getKeys().toList();
-      expect(keys, everyElement(startsWith('prayer_')));
-      expect(
-        keys,
-        isNot(contains(anyOf('dark_mode', 'selected_voice_id', 'onboarding_complete'))),
-      );
-    });
+    test(
+      'kunci pref diberi namespace prayer_ agar tidak menimpa fitur lama',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        await const PrayerPreferences(AppPreferences()).save(
+          const PrayerSettings(
+            method: PrayerMethod.kemenag,
+            asrMadhab: AsrMadhab.standard,
+            adjustments: PrayerAdjustments(),
+            location: jakarta,
+          ),
+        );
+        final keys = prefs.getKeys().toList();
+        expect(keys, everyElement(startsWith('prayer_')));
+        expect(
+          keys,
+          isNot(
+            contains(
+              anyOf('dark_mode', 'selected_voice_id', 'onboarding_complete'),
+            ),
+          ),
+        );
+      },
+    );
   });
 
   group('CityLocationCatalog', () {
@@ -128,7 +149,10 @@ void main() {
 
       expect(cities, isNotEmpty);
       expect(cities.length, greaterThanOrEqualTo(30));
-      expect(cities.every((city) => city.source == LocationSource.saved), isTrue);
+      expect(
+        cities.every((city) => city.source == LocationSource.saved),
+        isTrue,
+      );
       expect(
         cities.every(
           (city) =>
@@ -146,24 +170,26 @@ void main() {
       );
     });
 
-    test('hasil load kedua diambil dari memori, bukan baca berkas ulang', () async {
-      var reads = 0;
-      final catalog = CityLocationCatalog(
-        loadAsset: (_) async {
-          reads++;
-          return '{"locations":[{"name":"Jakarta","latitude":-6.175,'
-              '"longitude":106.827,"timezone":"Asia/Jakarta"}]}';
-        },
-      );
+    test(
+      'hasil load kedua diambil dari memori, bukan baca berkas ulang',
+      () async {
+        var reads = 0;
+        final catalog = CityLocationCatalog(
+          loadAsset: (_) async {
+            reads++;
+            return '{"locations":[{"name":"Jakarta","latitude":-6.175,'
+                '"longitude":106.827,"timezone":"Asia/Jakarta"}]}';
+          },
+        );
 
-      await catalog.load();
-      await catalog.load();
-      expect(reads, 1);
-    });
+        await catalog.load();
+        await catalog.load();
+        expect(reads, 1);
+      },
+    );
 
     test('entri cacat dilewati, berkas rusak menjadi daftar kosong', () {
-      final cities = CityLocationCatalog.decode(
-        '''
+      final cities = CityLocationCatalog.decode('''
         {"locations":[
           {"name":"Baik","latitude":-6.1,"longitude":106.8,"timezone":"Asia/Jakarta"},
           {"name":"TanpaKoordinat"},
@@ -171,8 +197,7 @@ void main() {
           {"latitude":-6.1,"longitude":106.8},
           {"name":"Teks","latitude":"-6.1","longitude":106.8}
         ]}
-        ''',
-      );
+        ''');
       expect(cities, hasLength(1));
       expect(cities.single.name, 'Baik');
       expect(cities.single.source, LocationSource.saved);

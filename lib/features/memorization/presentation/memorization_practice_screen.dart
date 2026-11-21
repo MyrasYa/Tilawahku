@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_theme.dart';
 import '../../../core/preferences/app_preferences.dart';
+import '../../assessment/data/asr_runtime_factory.dart';
+import '../../assessment/data/recitation_recorder.dart';
+import '../../assessment/presentation/assessment_panel.dart';
+import '../../assessment/presentation/recitation_assessment_controller.dart';
 import '../../reading/data/reading_repository.dart';
 import '../../reading/presentation/reading_screen.dart';
 import '../data/memorization_repository.dart';
@@ -14,12 +18,17 @@ class MemorizationPracticeScreen extends StatefulWidget {
     required this.repository,
     required this.readingRepository,
     required this.initialMode,
+    this.assessment,
   });
 
   final MemorizationProgram program;
   final MemorizationRepository repository;
   final ReadingRepository readingRepository;
   final MemorizationSessionMode initialMode;
+
+  /// Controller assessment yang bisa disisipkan test; layar tetap satu
+  /// pemilik dan melepasnya saat halaman ditutup.
+  final RecitationAssessmentController? assessment;
 
   @override
   State<MemorizationPracticeScreen> createState() =>
@@ -29,6 +38,7 @@ class MemorizationPracticeScreen extends StatefulWidget {
 class _MemorizationPracticeScreenState
     extends State<MemorizationPracticeScreen> {
   late Future<void> _initialization;
+  late final RecitationAssessmentController _assessment;
   List<AyahEntry> _ayahs = const [];
   Map<int, MemorizationAyahProgress> _progress = const {};
   DailyMemorizationProgress? _dailyProgress;
@@ -46,7 +56,38 @@ class _MemorizationPracticeScreenState
   @override
   void initState() {
     super.initState();
+    _assessment =
+        widget.assessment ??
+        RecitationAssessmentController(
+          runtime: createAsrRuntime(),
+          createCapture: MicrophoneCapture.new,
+        );
+    _assessment.addListener(_onAssessmentChanged);
     _initialization = _initialize();
+  }
+
+  @override
+  void dispose() {
+    _assessment.removeListener(_onAssessmentChanged);
+    _assessment.dispose();
+    super.dispose();
+  }
+
+  void _onAssessmentChanged() {
+    if (!mounted) return;
+    final attempt = _assessment.attempt;
+    final session = _session;
+    if (_assessment.phase == AssessmentPhase.scored &&
+        attempt != null &&
+        session != null &&
+        _ayahs.isNotEmpty) {
+      widget.repository.recordPractice(
+        sessionId: session.id,
+        globalAyahNumber: _currentAyah.globalNumber,
+        result: attempt.toJsonString(),
+      );
+    }
+    setState(() {});
   }
 
   Future<void> _initialize() async {
@@ -119,6 +160,7 @@ class _MemorizationPracticeScreenState
       _revealed = false;
       _error = null;
     });
+    await _assessment.discardRecording();
     await _recordCurrentAyah();
   }
 
@@ -222,6 +264,8 @@ class _MemorizationPracticeScreenState
             _progress[ayah.globalNumber]?.status ??
             MemorizationStatus.notStarted;
         final daily = _dailyProgress;
+        final hidesForSetoran = _assessment.hidesTargetText;
+        final showAyah = !_hideAyah && !hidesForSetoran;
         return Column(
           children: [
             if (daily != null)
@@ -262,24 +306,31 @@ class _MemorizationPracticeScreenState
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(22),
-                      child: _hideAyah
+                      child: !showAyah
                           ? Center(
                               child: Column(
                                 children: [
-                                  const Icon(
-                                    Icons.visibility_off_outlined,
+                                  Icon(
+                                    hidesForSetoran
+                                        ? Icons.mic_rounded
+                                        : Icons.visibility_off_outlined,
                                     size: 36,
                                   ),
                                   const SizedBox(height: 8),
-                                  const Text(
-                                    'Coba ingat ayatnya terlebih dahulu.',
+                                  Text(
+                                    hidesForSetoran
+                                        ? 'Teks ayat disembunyikan selama '
+                                              'Mode Setoran merekam.'
+                                        : 'Coba ingat ayatnya terlebih dahulu.',
                                   ),
-                                  const SizedBox(height: 12),
-                                  FilledButton.tonal(
-                                    onPressed: () =>
-                                        setState(() => _revealed = true),
-                                    child: const Text('Tampilkan ayat'),
-                                  ),
+                                  if (!hidesForSetoran) ...[
+                                    const SizedBox(height: 12),
+                                    FilledButton.tonal(
+                                      onPressed: () =>
+                                          setState(() => _revealed = true),
+                                      child: const Text('Tampilkan ayat'),
+                                    ),
+                                  ],
                                 ],
                               ),
                             )
@@ -357,6 +408,11 @@ class _MemorizationPracticeScreenState
                       ),
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  AssessmentPanel(
+                    controller: _assessment,
+                    targetText: ayah.uthmaniText,
+                  ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
                     onPressed: _openReader,

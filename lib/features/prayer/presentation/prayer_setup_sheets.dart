@@ -3,16 +3,18 @@ import 'package:flutter/material.dart';
 import '../../../app/app_theme.dart';
 import '../domain/prayer_method.dart';
 import '../domain/prayer_models.dart';
+import 'location_selection.dart';
 import 'prayer_times_controller.dart';
 
-Future<void> showPrayerLocationSheet(
+/// Lembar lokasi bersama: dipakai layar waktu salat dan layar arah kiblat.
+Future<void> showLocationSheet(
   BuildContext context,
-  PrayerTimesController controller,
+  LocationSelection selection,
 ) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
   showDragHandle: true,
-  builder: (_) => _LocationSheet(controller: controller),
+  builder: (_) => _LocationSheet(selection: selection),
 );
 
 Future<void> showPrayerSettingsSheet(
@@ -26,9 +28,9 @@ Future<void> showPrayerSettingsSheet(
 );
 
 class _LocationSheet extends StatefulWidget {
-  const _LocationSheet({required this.controller});
+  const _LocationSheet({required this.selection});
 
-  final PrayerTimesController controller;
+  final LocationSelection selection;
 
   @override
   State<_LocationSheet> createState() => _LocationSheetState();
@@ -44,7 +46,7 @@ class _LocationSheetState extends State<_LocationSheet> {
   @override
   void initState() {
     super.initState();
-    final location = widget.controller.settings.location;
+    final location = widget.selection.selectedLocation;
     if (location != null && location.source == LocationSource.manual) {
       _name.text = location.name;
       _latitude.text = location.latitude.toStringAsFixed(4);
@@ -68,14 +70,14 @@ class _LocationSheetState extends State<_LocationSheet> {
       setState(() => _error = 'Isi lintang dan bujur sebagai angka.');
       return;
     }
-    await widget.controller.enterCoordinates(
+    await widget.selection.enterCoordinates(
       name: _name.text,
       latitude: latitude,
       longitude: longitude,
     );
     if (!mounted) return;
-    if (widget.controller.locationMessage != null) {
-      setState(() => _error = widget.controller.locationMessage!);
+    if (widget.selection.locationMessage != null) {
+      setState(() => _error = widget.selection.locationMessage!);
       return;
     }
     Navigator.of(context).pop();
@@ -85,8 +87,8 @@ class _LocationSheetState extends State<_LocationSheet> {
   Widget build(BuildContext context) {
     final query = _search.text.trim().toLowerCase();
     final cities = query.isEmpty
-        ? widget.controller.cities
-        : widget.controller.cities
+        ? widget.selection.cities
+        : widget.selection.cities
               .where(
                 (city) =>
                     city.name.toLowerCase().contains(query) ||
@@ -104,10 +106,7 @@ class _LocationSheetState extends State<_LocationSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Atur lokasi',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('Atur lokasi', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 4),
             const Text(
               'Kota di bawah dibundel dalam aplikasi (koordinat OpenStreetMap, '
@@ -116,12 +115,12 @@ class _LocationSheetState extends State<_LocationSheet> {
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
-              onPressed: widget.controller.busy
+              onPressed: widget.selection.busy
                   ? null
                   : () async {
-                      await widget.controller.useDeviceLocation();
+                      await widget.selection.useDeviceLocation();
                       if (context.mounted &&
-                          widget.controller.locationMessage == null) {
+                          widget.selection.locationMessage == null) {
                         Navigator.of(context).pop();
                       }
                     },
@@ -154,7 +153,7 @@ class _LocationSheetState extends State<_LocationSheet> {
                         '${city.longitude.toStringAsFixed(3)}',
                       ),
                       onTap: () async {
-                        await widget.controller.selectCity(city);
+                        await widget.selection.selectCity(city);
                         if (context.mounted) Navigator.of(context).pop();
                       },
                     ),
@@ -213,10 +212,7 @@ class _LocationSheetState extends State<_LocationSheet> {
             ),
             if (_error.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(
-                _error,
-                style: const TextStyle(color: Colors.redAccent),
-              ),
+              Text(_error, style: const TextStyle(color: Colors.redAccent)),
             ],
             const SizedBox(height: 10),
             Align(
@@ -306,10 +302,7 @@ class _SettingsSheet extends StatelessWidget {
                         controller.setAdjustment(kind, minutes),
                   ),
               const SizedBox(height: 16),
-              Text(
-                'Pengingat',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
+              Text('Pengingat', style: Theme.of(context).textTheme.titleSmall),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: settings.remindersEnabled,
@@ -354,10 +347,10 @@ class _SettingsSheet extends StatelessWidget {
                     if (kind.isSalat)
                       FilterChip(
                         label: Text(kind.labelId),
-                        selected: settings.reminderKinds.isEmpty ||
+                        selected:
+                            settings.reminderKinds.isEmpty ||
                             settings.reminderKinds.contains(kind),
-                        onSelected: (_) =>
-                            controller.toggleReminderKind(kind),
+                        onSelected: (_) => controller.toggleReminderKind(kind),
                       ),
                 ],
               ),
@@ -398,10 +391,12 @@ class _AdjustmentRow extends StatelessWidget {
       Expanded(child: Text(kind.labelId)),
       IconButton(
         tooltip: 'Kurangi 1 menit',
-        onPressed: () => onChanged((minutes - 1).clamp(
-          -PrayerAdjustments.maxMinutes,
-          PrayerAdjustments.maxMinutes,
-        )),
+        onPressed: () => onChanged(
+          (minutes - 1).clamp(
+            -PrayerAdjustments.maxMinutes,
+            PrayerAdjustments.maxMinutes,
+          ),
+        ),
         icon: const Icon(Icons.remove_rounded),
       ),
       SizedBox(
@@ -414,10 +409,12 @@ class _AdjustmentRow extends StatelessWidget {
       ),
       IconButton(
         tooltip: 'Tambah 1 menit',
-        onPressed: () => onChanged((minutes + 1).clamp(
-          -PrayerAdjustments.maxMinutes,
-          PrayerAdjustments.maxMinutes,
-        )),
+        onPressed: () => onChanged(
+          (minutes + 1).clamp(
+            -PrayerAdjustments.maxMinutes,
+            PrayerAdjustments.maxMinutes,
+          ),
+        ),
         icon: const Icon(Icons.add_rounded),
       ),
     ],

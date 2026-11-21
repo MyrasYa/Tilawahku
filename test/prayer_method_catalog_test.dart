@@ -14,7 +14,11 @@ void main() {
   test('setiap metode yang ditawarkan UI punya bukti dari server', () {
     for (final method in PrayerMethod.values) {
       final entry = reported['${method.aladhanId}'];
-      expect(entry, isNotNull, reason: 'metode ${method.aladhanId} tanpa bukti');
+      expect(
+        entry,
+        isNotNull,
+        reason: 'metode ${method.aladhanId} tanpa bukti',
+      );
       expect(
         entry['name'],
         method.name,
@@ -38,12 +42,12 @@ void main() {
   test('metode bawaan adalah aturan Indonesia dan punya sudutnya sendiri', () {
     expect(PrayerMethod.defaultMethod, PrayerMethod.kemenag);
     expect(PrayerMethod.defaultMethod.aladhanId, 20);
-    expect(PrayerMethod.defaultMethod.angleSummary, 'Subuh 20° · Isya sudut 18°');
-    expect(PrayerMethod.byId(4).ishaRule, '90 menit setelah Magrib');
     expect(
-      PrayerMethod.byId(5).angleSummary,
-      'Subuh 19.5° · Isya sudut 17.5°',
+      PrayerMethod.defaultMethod.angleSummary,
+      'Subuh 20° · Isya sudut 18°',
     );
+    expect(PrayerMethod.byId(4).ishaRule, '90 menit setelah Magrib');
+    expect(PrayerMethod.byId(5).angleSummary, 'Subuh 19.5° · Isya sudut 17.5°');
   });
 
   test('byId menolak metode yang tidak ada di katalog', () {
@@ -103,31 +107,40 @@ void main() {
         'unknown': 4,
       });
       expect(restored.minutesFor(PrayerKind.fajr), -3);
-      expect(restored.minutesFor(PrayerKind.isha), PrayerAdjustments.maxMinutes);
+      expect(
+        restored.minutesFor(PrayerKind.isha),
+        PrayerAdjustments.maxMinutes,
+      );
       expect(restored.minutesFor(PrayerKind.sunrise), isNull);
       expect(restored.minutesFor(PrayerKind.dhuhr), isNull);
       expect(restored.entries, hasLength(2));
     });
 
-    test('penyesuaian menggeser instan dan jam tangan tanpa mengubah sumber', () {
-      final schedule = _schedule([
-        (PrayerKind.fajr, '2026-11-20T04:03:00+07:00'),
-        (PrayerKind.dhuhr, '2026-11-20T11:38:00+07:00'),
-      ]);
-      final adjusted = schedule.withAdjustments(
-        const PrayerAdjustments().set(PrayerKind.fajr, -2),
-      );
-      expect(adjusted.eventFor(PrayerKind.fajr)!.wallClock, '04:01');
-      expect(
-        adjusted.eventFor(PrayerKind.fajr)!.instant,
-        DateTime.utc(2026, 11, 19, 21, 1),
-      );
-      expect(adjusted.eventFor(PrayerKind.dhuhr)!.wallClock, '11:38');
-      expect(adjusted.source, schedule.source);
-      expect(adjusted.dateKey, schedule.dateKey);
-      // Tanpa penyesuaian, objek dikembalikan apa adanya (bukan salinan).
-      expect(schedule.withAdjustments(const PrayerAdjustments()), same(schedule));
-    });
+    test(
+      'penyesuaian menggeser instan dan jam tangan tanpa mengubah sumber',
+      () {
+        final schedule = _schedule([
+          (PrayerKind.fajr, '2026-11-20T04:03:00+07:00'),
+          (PrayerKind.dhuhr, '2026-11-20T11:38:00+07:00'),
+        ]);
+        final adjusted = schedule.withAdjustments(
+          const PrayerAdjustments().set(PrayerKind.fajr, -2),
+        );
+        expect(adjusted.eventFor(PrayerKind.fajr)!.wallClock, '04:01');
+        expect(
+          adjusted.eventFor(PrayerKind.fajr)!.instant,
+          DateTime.utc(2026, 11, 19, 21, 1),
+        );
+        expect(adjusted.eventFor(PrayerKind.dhuhr)!.wallClock, '11:38');
+        expect(adjusted.source, schedule.source);
+        expect(adjusted.dateKey, schedule.dateKey);
+        // Tanpa penyesuaian, objek dikembalikan apa adanya (bukan salinan).
+        expect(
+          schedule.withAdjustments(const PrayerAdjustments()),
+          same(schedule),
+        );
+      },
+    );
   });
 
   group('scheduleCacheKey', () {
@@ -138,13 +151,16 @@ void main() {
         longitude: 106.8272,
         source: LocationSource.gps,
       );
-      String key(PrayerMethod method, AsrMadhab madhab, {WorshipLocation? at}) =>
-          scheduleCacheKey(
-            dateKey: '2026-11-20',
-            location: at ?? jakarta,
-            method: method,
-            asrMadhab: madhab,
-          );
+      String key(
+        PrayerMethod method,
+        AsrMadhab madhab, {
+        WorshipLocation? at,
+      }) => scheduleCacheKey(
+        dateKey: '2026-11-20',
+        location: at ?? jakarta,
+        method: method,
+        asrMadhab: madhab,
+      );
 
       expect(
         key(PrayerMethod.kemenag, AsrMadhab.standard),
@@ -173,21 +189,24 @@ void main() {
       );
     });
 
-    test('koordinat dibulatkan sehingga getaran GPS tidak membuat kunci baru', () {
-      const a = WorshipLocation(
-        name: 'Jakarta',
-        latitude: -6.1754,
-        longitude: 106.8271,
-        source: LocationSource.gps,
-      );
-      const b = WorshipLocation(
-        name: 'Jakarta',
-        latitude: -6.1752,
-        longitude: 106.8273,
-        source: LocationSource.gps,
-      );
-      expect(a.cacheKey, b.cacheKey);
-    });
+    test(
+      'koordinat dibulatkan sehingga getaran GPS tidak membuat kunci baru',
+      () {
+        const a = WorshipLocation(
+          name: 'Jakarta',
+          latitude: -6.1754,
+          longitude: 106.8271,
+          source: LocationSource.gps,
+        );
+        const b = WorshipLocation(
+          name: 'Jakarta',
+          latitude: -6.1752,
+          longitude: 106.8273,
+          source: LocationSource.gps,
+        );
+        expect(a.cacheKey, b.cacheKey);
+      },
+    );
   });
 
   group('WorshipLocation', () {
@@ -226,19 +245,20 @@ Map<String, dynamic> _methodParams() {
   return jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
 }
 
-PrayerDaySchedule _schedule(List<(PrayerKind, String)> raw) => PrayerDaySchedule(
-  dateKey: '2026-11-20',
-  timezoneId: 'Asia/Jakarta',
-  locationOffset: const Duration(hours: 7),
-  methodId: 20,
-  asrMadhab: AsrMadhab.standard,
-  events: [
-    for (final (kind, stamp) in raw)
-      PrayerEvent(
-        kind: kind,
-        instant: DateTime.parse(stamp).toUtc(),
-        locationOffset: const Duration(hours: 7),
-      ),
-  ],
-  source: ScheduleSource.live,
-);
+PrayerDaySchedule _schedule(List<(PrayerKind, String)> raw) =>
+    PrayerDaySchedule(
+      dateKey: '2026-11-20',
+      timezoneId: 'Asia/Jakarta',
+      locationOffset: const Duration(hours: 7),
+      methodId: 20,
+      asrMadhab: AsrMadhab.standard,
+      events: [
+        for (final (kind, stamp) in raw)
+          PrayerEvent(
+            kind: kind,
+            instant: DateTime.parse(stamp).toUtc(),
+            locationOffset: const Duration(hours: 7),
+          ),
+      ],
+      source: ScheduleSource.live,
+    );

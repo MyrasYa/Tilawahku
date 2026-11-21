@@ -9,12 +9,14 @@ import '../data/prayer_repository.dart';
 import '../domain/prayer_countdown.dart';
 import '../domain/prayer_method.dart';
 import '../domain/prayer_models.dart';
+import 'location_selection.dart';
 
 enum PrayerLoadState { loading, ready, needsLocation, failed }
 
 /// State layar waktu salat: jadwal, hitung mundur, dan seluruh perubahan
 /// preferensi. Widget hanya membaca properti dan memanggil aksi.
-class PrayerTimesController extends ChangeNotifier {
+class PrayerTimesController extends ChangeNotifier
+    implements LocationSelection {
   PrayerTimesController({
     PrayerRepository? repository,
     DeviceLocationProvider? deviceLocation,
@@ -36,6 +38,7 @@ class PrayerTimesController extends ChangeNotifier {
     asrMadhab: AsrMadhab.standard,
     adjustments: PrayerAdjustments(),
   );
+  @override
   List<WorshipLocation> cities = const [];
 
   /// 0 = hari ini, -1 kemarin, +1 besok, dst.
@@ -46,8 +49,10 @@ class PrayerTimesController extends ChangeNotifier {
   PrayerDaySchedule? followingSchedule;
   String? notice;
   String? errorMessage;
+  @override
   String? locationMessage;
 
+  @override
   bool busy = false;
   bool remindersArmed = false;
 
@@ -60,6 +65,9 @@ class PrayerTimesController extends ChangeNotifier {
       _repository.remindersSupportedByPlatform;
 
   bool get isToday => dayOffset == 0;
+
+  @override
+  WorshipLocation? get selectedLocation => settings.location;
 
   DateTime get now => _clock();
 
@@ -120,6 +128,7 @@ class PrayerTimesController extends ChangeNotifier {
     await _load();
   }
 
+  @override
   Future<void> useDeviceLocation() async {
     busy = true;
     locationMessage = null;
@@ -137,6 +146,7 @@ class PrayerTimesController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> selectCity(WorshipLocation city) => _applyLocation(
     WorshipLocation(
       name: city.name,
@@ -148,6 +158,7 @@ class PrayerTimesController extends ChangeNotifier {
     ),
   );
 
+  @override
   Future<void> enterCoordinates({
     required String name,
     required double latitude,
@@ -246,10 +257,7 @@ class PrayerTimesController extends ChangeNotifier {
     notifyListeners();
     final dateKey = viewedDateKey;
     try {
-      final outcome = await _repository.scheduleFor(
-        dateKey,
-        refresh: refresh,
-      );
+      final outcome = await _repository.scheduleFor(dateKey, refresh: refresh);
       if (generation != _generation) return;
       _rawSchedule = outcome.schedule;
       schedule = outcome.schedule.withAdjustments(settings.adjustments);
@@ -303,7 +311,8 @@ class PrayerTimesController extends ChangeNotifier {
   void _tick() {
     final current = _rawSchedule;
     if (state != PrayerLoadState.ready || current == null) return;
-    if (dayOffset == 0 && dateKeyFor(_clock(), current.locationOffset) != current.dateKey) {
+    if (dayOffset == 0 &&
+        dateKeyFor(_clock(), current.locationOffset) != current.dateKey) {
       // Hari lokasi berganti (mis. setelah Isya): muat jadwal hari baru agar
       // hitung mundur menuju Subuh, bukan berhenti.
       _rawFollowing = null;

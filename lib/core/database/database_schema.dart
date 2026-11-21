@@ -1,5 +1,5 @@
 abstract final class DatabaseSchema {
-  static const version = 7;
+  static const version = 9;
 
   static const createSurah = '''
     CREATE TABLE surah (
@@ -148,7 +148,7 @@ abstract final class DatabaseSchema {
       id TEXT PRIMARY KEY,
       program_id TEXT NOT NULL,
       mode TEXT NOT NULL CHECK (
-        mode IN ('learn', 'hide_reveal', 'recall', 'audio_repetition')
+        mode IN ('learn', 'hide_reveal', 'recall', 'audio_repetition', 'ai_assessment')
       ),
       day_key TEXT NOT NULL,
       started_at TEXT NOT NULL,
@@ -240,6 +240,20 @@ abstract final class DatabaseSchema {
       'CREATE INDEX prayer_schedule_day_idx '
       'ON prayer_schedule_cache (date_key, location_key)';
 
+  static const createHijriCalendarCache = '''
+    CREATE TABLE hijri_calendar_cache (
+      cache_key TEXT PRIMARY KEY,
+      gregorian_year INTEGER NOT NULL,
+      gregorian_month INTEGER NOT NULL,
+      month_json TEXT NOT NULL,
+      cached_at TEXT NOT NULL
+    )
+  ''';
+
+  static const createHijriCalendarYearMonthIndex =
+      'CREATE INDEX hijri_calendar_year_month_idx '
+      'ON hijri_calendar_cache (gregorian_year, gregorian_month)';
+
   static const memorizationCreateStatements = [
     createMemorizationProgram,
     createMemorizationAyahProgress,
@@ -256,6 +270,11 @@ abstract final class DatabaseSchema {
   static const prayerCreateStatements = [
     createPrayerScheduleCache,
     createPrayerScheduleDayIndex,
+  ];
+
+  static const hijriCalendarCreateStatements = [
+    createHijriCalendarCache,
+    createHijriCalendarYearMonthIndex,
   ];
 
   static const createAyahSurahIndex =
@@ -282,5 +301,6 @@ abstract final class DatabaseSchema {
     ...memorizationCreateStatements,
     ...tajwidCreateStatements,
     ...prayerCreateStatements,
+    ...hijriCalendarCreateStatements,
   ];
 }

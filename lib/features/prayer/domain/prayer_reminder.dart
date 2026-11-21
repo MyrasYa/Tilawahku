@@ -60,7 +60,10 @@ class PrayerReminderPolicy {
     final lead = leadMinutes.clamp(1, PrayerSettings.maxLeadMinutes);
     final utcNow = now.toUtc();
     final selected = kinds.isEmpty
-        ? {for (final kind in PrayerKind.values) if (kind.isSalat) kind}
+        ? {
+            for (final kind in PrayerKind.values)
+              if (kind.isSalat) kind,
+          }
         : kinds;
     final reminders = <PrayerReminder>[];
     for (final event in schedule.salatEvents) {

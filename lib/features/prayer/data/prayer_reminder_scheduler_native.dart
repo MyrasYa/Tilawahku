@@ -61,9 +61,10 @@ class NotificationPrayerReminderScheduler implements PrayerReminderScheduler {
       _ready = true;
     }
 
-    final android = _plugin.resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin
-    >();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (android != null) {
       final granted = await android.requestNotificationsPermission();
       if (granted == false) return false;

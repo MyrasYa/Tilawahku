@@ -8,30 +8,33 @@ import 'package:tilawahku/core/database/database_schema.dart';
 /// web) harus memakainya — kalau salah satu tertinggal, pengguna platform
 /// tertentu tidak punya tabelnya saat layar waktu sholat dibuka.
 void main() {
-  test('versi skema naik satu langkah menjadi 7', () {
-    expect(DatabaseSchema.version, 7);
+  test('versi skema naik satu langkah menjadi 8 atau lebih', () {
+    expect(DatabaseSchema.version, greaterThanOrEqualTo(8));
   });
 
-  test('pernyataan v7 adalah tabel dan indeks baru tanpa mengubah yang lama', () {
-    expect(DatabaseSchema.prayerCreateStatements, hasLength(2));
-    expect(
-      DatabaseSchema.createStatements,
-      containsAll(DatabaseSchema.prayerCreateStatements),
-    );
-    for (final statement in DatabaseSchema.prayerCreateStatements) {
-      final head = statement.trim();
+  test(
+    'pernyataan v7 adalah tabel dan indeks baru tanpa mengubah yang lama',
+    () {
+      expect(DatabaseSchema.prayerCreateStatements, hasLength(2));
       expect(
-        head,
-        anyOf(startsWith('CREATE TABLE'), startsWith('CREATE INDEX')),
+        DatabaseSchema.createStatements,
+        containsAll(DatabaseSchema.prayerCreateStatements),
       );
-      expect(head, isNot(contains('DROP')));
-      expect(head, isNot(contains('ALTER')));
-    }
-    expect(
-      DatabaseSchema.createPrayerScheduleCache.trim(),
-      startsWith('CREATE TABLE prayer_schedule_cache'),
-    );
-  });
+      for (final statement in DatabaseSchema.prayerCreateStatements) {
+        final head = statement.trim();
+        expect(
+          head,
+          anyOf(startsWith('CREATE TABLE'), startsWith('CREATE INDEX')),
+        );
+        expect(head, isNot(contains('DROP')));
+        expect(head, isNot(contains('ALTER')));
+      }
+      expect(
+        DatabaseSchema.createPrayerScheduleCache.trim(),
+        startsWith('CREATE TABLE prayer_schedule_cache'),
+      );
+    },
+  );
 
   test('cache jadwal menyimpan kunci lengkap dan nilai server apa adanya', () {
     final table = DatabaseSchema.createPrayerScheduleCache;

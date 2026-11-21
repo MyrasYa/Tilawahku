@@ -66,8 +66,7 @@ class PrayerEvent {
   );
 
   /// Batas tampilan untuk jendela adzan: waktu hasil penyesuaian manual.
-  PrayerEvent withAdjustment(int? minutes) =>
-      minutes == null || minutes == 0
+  PrayerEvent withAdjustment(int? minutes) => minutes == null || minutes == 0
       ? this
       : shift(Duration(minutes: minutes));
 
@@ -153,7 +152,11 @@ class PrayerAdjustments {
 
   PrayerAdjustments set(PrayerKind kind, int minutes) {
     if (!kind.isSalat) {
-      throw ArgumentError.value(kind, 'kind', 'Hanya waktu sholat yang bisa disesuaikan.');
+      throw ArgumentError.value(
+        kind,
+        'kind',
+        'Hanya waktu sholat yang bisa disesuaikan.',
+      );
     }
     if (minutes.abs() > maxMinutes) {
       throw ArgumentError.value(

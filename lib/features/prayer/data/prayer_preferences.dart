@@ -64,10 +64,7 @@ class PrayerPreferences {
       jsonEncode(settings.adjustments.toMap()),
     );
     await _preferences.setBool(_remindersKey, settings.remindersEnabled);
-    await _preferences.setInt(
-      _reminderLeadKey,
-      settings.reminderLeadMinutes,
-    );
+    await _preferences.setInt(_reminderLeadKey, settings.reminderLeadMinutes);
     await _preferences.setString(
       _reminderKindsKey,
       jsonEncode([for (final kind in settings.reminderKinds) kind.name]),
@@ -108,18 +105,20 @@ class PrayerPreferences {
     if (name is! String || latitude is! num || longitude is! num) return null;
     final location = WorshipLocation.fromMap(map);
     return WorshipLocation.coordinateInRange(
-      location.latitude,
-      location.longitude,
-    )
-    ? location
-    : null;
+          location.latitude,
+          location.longitude,
+        )
+        ? location
+        : null;
   }
 
   static Set<PrayerKind> _kindsOf(Object? decoded) {
     if (decoded is! List) return const {};
     return {
       for (final entry in decoded)
-        ...PrayerKind.values.where((kind) => kind.name == '$entry' && kind.isSalat),
+        ...PrayerKind.values.where(
+          (kind) => kind.name == '$entry' && kind.isSalat,
+        ),
     };
   }
 }

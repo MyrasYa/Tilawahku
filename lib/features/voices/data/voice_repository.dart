@@ -23,11 +23,10 @@ class VoiceRepository {
       whereArgs: [voice.id],
     );
     if (updated == 0) {
-      await db.insert(
-        'suara',
-        {'id': voice.id, ...values},
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
+      await db.insert('suara', {
+        'id': voice.id,
+        ...values,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
   }
 }

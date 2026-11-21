@@ -25,6 +25,7 @@ abstract interface class MemorizationStore {
     required int globalAyahNumber,
     required String dayKey,
     required String timestamp,
+    String? result,
   });
   Future<void> updateStatus({
     required String programId,
@@ -143,6 +144,7 @@ class MemorizationRepository {
   Future<bool> recordPractice({
     required String sessionId,
     required int globalAyahNumber,
+    String? result,
   }) {
     final now = _clock();
     return _store.recordPractice(
@@ -150,6 +152,7 @@ class MemorizationRepository {
       globalAyahNumber: globalAyahNumber,
       dayKey: _dayKey(now),
       timestamp: now.toUtc().toIso8601String(),
+      result: result,
     );
   }
 
@@ -300,6 +303,7 @@ class SqliteMemorizationStore implements MemorizationStore {
     required int globalAyahNumber,
     required String dayKey,
     required String timestamp,
+    String? result,
   }) async {
     final db = await _database;
     return db.transaction((transaction) async {
@@ -369,6 +373,9 @@ class SqliteMemorizationStore implements MemorizationStore {
       final attempts = (activity?['attempts'] as int? ?? 0) + 1;
       final newlyLearned =
           isNewAyah || ((activity?['newly_learned'] as int? ?? 0) == 1);
+      final existingResult = activity?['result'] as String?;
+      final finalResult = result ?? existingResult;
+
       await transaction.insert('memorization_session_ayah', {
         'session_id': sessionId,
         'nomor_global': globalAyahNumber,
@@ -376,6 +383,7 @@ class SqliteMemorizationStore implements MemorizationStore {
         'newly_learned': newlyLearned ? 1 : 0,
         'first_practiced_at': activity?['first_practiced_at'] ?? timestamp,
         'last_practiced_at': timestamp,
+        'result': finalResult,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
 
       if (firstInSession && isNewAyah) {

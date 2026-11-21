@@ -29,10 +29,7 @@ List<PrayerEvent> sortedSalatEvents(Iterable<PrayerEvent> events) {
 /// hari. Penggabungan beberapa hari dilakukan pemanggil (layar menggabungkan
 /// jadwal hari ini + besok), sehingga pergantian setelah Isya terjadi tanpa
 /// logika tanggal di sini.
-UpcomingPrayer? nextSalatEvent(
-  Iterable<PrayerEvent> events,
-  DateTime now,
-) {
+UpcomingPrayer? nextSalatEvent(Iterable<PrayerEvent> events, DateTime now) {
   final salat = sortedSalatEvents(events);
   for (var index = 0; index < salat.length; index++) {
     final candidate = salat[index];

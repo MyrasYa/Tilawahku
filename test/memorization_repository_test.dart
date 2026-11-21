@@ -192,6 +192,39 @@ void main() {
       1,
     );
   });
+
+  test('persists structured assessment result and does not overwrite with null', () async {
+    final store = _MemoryMemorizationStore();
+    final reader = _MemoryReadingRepository(ayahs);
+    final repo = MemorizationRepository(
+      store: store,
+      readingRepository: reader,
+      clock: () => DateTime(2026, 11, 8, 10),
+    );
+    final program = await _createProgram(repo);
+    final session = await repo.startSession(
+      programId: program.id,
+      mode: MemorizationSessionMode.aiAssessment,
+    );
+    const resultJson = '{"match_percent":95.5,"transcript":"test"}';
+    await repo.recordPractice(
+      sessionId: session.id,
+      globalAyahNumber: 2,
+      result: resultJson,
+    );
+
+    var recorded = await repo.getSessionAyahs(session.id);
+    expect(recorded.single.result, resultJson);
+
+    // Call recordPractice again without result - should NOT overwrite
+    await repo.recordPractice(
+      sessionId: session.id,
+      globalAyahNumber: 2,
+    );
+    recorded = await repo.getSessionAyahs(session.id);
+    expect(recorded.single.result, resultJson);
+    expect(recorded.single.attempts, 2);
+  });
 }
 
 Future<MemorizationProgram> _createProgram(MemorizationRepository repository) =>
@@ -324,6 +357,7 @@ class _MemoryMemorizationStore implements MemorizationStore {
     required int globalAyahNumber,
     required String dayKey,
     required String timestamp,
+    String? result,
   }) async {
     final session = sessions[sessionId]!;
     final key = (session.programId, globalAyahNumber);
@@ -343,7 +377,7 @@ class _MemoryMemorizationStore implements MemorizationStore {
       globalAyahNumber: globalAyahNumber,
       attempts: (oldActivity?.attempts ?? 0) + 1,
       newlyLearned: oldActivity?.newlyLearned ?? isNew,
-      result: oldActivity?.result,
+      result: result ?? oldActivity?.result,
     );
     sessions[sessionId] = MemorizationSession(
       id: session.id,

@@ -46,10 +46,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
 
   Future<void> _openSettings() => showPrayerSettingsSheet(context, _controller);
 
-  Future<void> _pickLocation() => showPrayerLocationSheet(
-    context,
-    _controller,
-  );
+  Future<void> _pickLocation() => showLocationSheet(context, _controller);
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -73,12 +70,11 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> {
         controller: _controller,
         onPickLocation: _pickLocation,
       ),
-      PrayerLoadState.failed when _controller.schedule == null =>
-        _FailurePanel(
-          message: _controller.errorMessage ?? 'Jadwal tidak tersedia.',
-          onRetry: _controller.refresh,
-          onPickLocation: _pickLocation,
-        ),
+      PrayerLoadState.failed when _controller.schedule == null => _FailurePanel(
+        message: _controller.errorMessage ?? 'Jadwal tidak tersedia.',
+        onRetry: _controller.refresh,
+        onPickLocation: _pickLocation,
+      ),
       _ => _ScheduleBody(
         controller: _controller,
         onPickLocation: _pickLocation,
@@ -129,16 +125,11 @@ class _ScheduleBody extends StatelessWidget {
             event: event,
             isNext: upcoming?.event.kind == event.kind,
             isRunning: controller.currentSalat?.kind == event.kind,
-            adjustment: controller.settings.adjustments.minutesFor(
-              event.kind,
-            ) ??
-            0,
+            adjustment:
+                controller.settings.adjustments.minutesFor(event.kind) ?? 0,
           ),
         const SizedBox(height: 12),
-        _ReminderCard(
-          controller: controller,
-          onOpenSettings: onOpenSettings,
-        ),
+        _ReminderCard(controller: controller, onOpenSettings: onOpenSettings),
         if (controller.errorMessage != null) ...[
           const SizedBox(height: 12),
           _NoticeCard(message: controller.errorMessage!),
@@ -260,7 +251,9 @@ class _HeaderCard extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              next == null ? 'Waktu salat hari ini selesai' : 'Menuju ${next.event.kind.labelId}',
+              next == null
+                  ? 'Waktu salat hari ini selesai'
+                  : 'Menuju ${next.event.kind.labelId}',
               style: theme.textTheme.titleSmall?.copyWith(
                 color: AppColors.parchment,
               ),
@@ -349,7 +342,10 @@ class _DayNavigator extends StatelessWidget {
             icon: const Icon(Icons.chevron_right_rounded),
           ),
           if (!controller.isToday)
-            TextButton(onPressed: controller.backToToday, child: const Text('Hari ini')),
+            TextButton(
+              onPressed: controller.backToToday,
+              child: const Text('Hari ini'),
+            ),
         ],
       ),
     ),

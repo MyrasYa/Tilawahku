@@ -68,6 +68,60 @@ class AppDatabase {
             await db.execute(statement);
           }
         }
+        if (oldVersion < 8) {
+          for (final statement
+              in DatabaseSchema.hijriCalendarCreateStatements) {
+            await db.execute(statement);
+          }
+        }
+        if (oldVersion < 9) {
+          await db.transaction((txn) async {
+            final oldRows = await txn.rawQuery('SELECT COUNT(*) as cnt FROM memorization_session');
+            final initialCount = Sqflite.firstIntValue(oldRows) ?? 0;
+
+            await txn.execute('''
+              CREATE TABLE memorization_session_v9 (
+                id TEXT PRIMARY KEY,
+                program_id TEXT NOT NULL,
+                mode TEXT NOT NULL CHECK (
+                  mode IN ('learn', 'hide_reveal', 'recall', 'audio_repetition', 'ai_assessment')
+                ),
+                day_key TEXT NOT NULL,
+                started_at TEXT NOT NULL,
+                completed_at TEXT,
+                new_ayah_count INTEGER NOT NULL DEFAULT 0,
+                repeated_ayah_count INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (program_id) REFERENCES memorization_program (id)
+                  ON DELETE CASCADE
+              )
+            ''');
+
+            await txn.execute('''
+              INSERT INTO memorization_session_v9 (
+                id, program_id, mode, day_key, started_at, completed_at,
+                new_ayah_count, repeated_ayah_count
+              )
+              SELECT
+                id, program_id, mode, day_key, started_at, completed_at,
+                new_ayah_count, repeated_ayah_count
+              FROM memorization_session
+            ''');
+
+            final newRows = await txn.rawQuery('SELECT COUNT(*) as cnt FROM memorization_session_v9');
+            final migratedCount = Sqflite.firstIntValue(newRows) ?? 0;
+
+            if (initialCount != migratedCount) {
+              throw StateError(
+                'Migration v8->v9 row count mismatch: '
+                '$initialCount rows before, $migratedCount rows after',
+              );
+            }
+
+            await txn.execute('DROP TABLE memorization_session');
+            await txn.execute('ALTER TABLE memorization_session_v9 RENAME TO memorization_session');
+            await txn.execute(DatabaseSchema.createMemorizationSessionsIndex);
+          });
+        }
       },
       onOpen: (db) => _ensureBundledContent(db, filePath),
     );
