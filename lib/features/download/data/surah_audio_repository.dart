@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:io'
+    if (dart.library.js_interop) '../../../core/platform/unsupported_io.dart';
 
 import '../../player/data/audio_repository.dart';
 

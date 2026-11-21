@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tilawahku/app/app_theme.dart';
 import 'package:tilawahku/app/tilawahku_app.dart';
 import 'package:tilawahku/core/preferences/app_preferences.dart';
 import 'package:tilawahku/features/player/data/audio_repository.dart';
 import 'package:tilawahku/features/reading/data/reading_repository.dart';
+import 'package:tilawahku/features/reading/presentation/bookmarks_screen.dart';
+import 'package:tilawahku/features/reading/presentation/home_screen.dart';
+import 'package:tilawahku/features/reading/presentation/reading_screen.dart';
 import 'package:tilawahku/features/reading/presentation/search_screen.dart';
 import 'package:tilawahku/features/repeat/presentation/repeat_settings_screen.dart';
 import 'package:tilawahku/features/voices/data/voice_catalog.dart';
+import 'package:tilawahku/features/voices/data/voice_audio_source.dart';
 import 'package:tilawahku/features/download/data/surah_audio_repository.dart';
 
 void main() {
@@ -17,12 +22,39 @@ void main() {
   test('voice catalog reads the bundled configuration', () async {
     final voices = await const VoiceCatalog().load();
 
-    expect(voices, hasLength(3));
+    expect(voices, hasLength(10));
     expect(voices.first.id, 'husary');
     expect(voices[1].id, 'minshawi');
-    expect(voices.last.id, 'alafasy');
-    expect(voices.last.editionId, 'ar.alafasy');
+    expect(voices[2].id, 'alafasy');
+    expect(voices[2].editionId, 'ar.alafasy');
     expect(voices.every((voice) => voice.status == VoiceStatus.active), isTrue);
+    expect(
+      voices.take(9).every((voice) => voice.audioMode == VoiceAudioMode.ayah),
+      isTrue,
+    );
+    final luhaidan = voices.singleWhere(
+      (voice) => voice.id == 'muhammad-al-luhaidan',
+    );
+    expect(luhaidan.audioMode, VoiceAudioMode.surah);
+    expect(luhaidan.editionId, 'ar.muhammadalluhaidan');
+    expect(luhaidan.bitrateKbps, 128);
+    final expectedAdditions = {
+      'abdulbasit': ('ar.abdulsamad', 64),
+      'sudais': ('ar.abdurrahmaansudais', 192),
+      'hani-rifai': ('ar.hanirifai', 192),
+      'maher-muaiqly': ('ar.mahermuaiqly', 128),
+      'muhammad-ayyoub': ('ar.muhammadayyoub', 128),
+      'saood-shuraym': ('ar.saoodshuraym', 64),
+    };
+    for (final entry in expectedAdditions.entries) {
+      final voice = voices.singleWhere((item) => item.id == entry.key);
+      expect(voice.editionId, entry.value.$1);
+      expect(voice.bitrateKbps, entry.value.$2);
+      expect(
+        VoiceAudioSource.urlFor(voice, 6236),
+        '${VoiceAudioSource.baseUrl}/${entry.value.$2}/${entry.value.$1}/6236.mp3',
+      );
+    }
   });
 
   test('ayah entries read the bundled Latin transliteration', () {
@@ -76,6 +108,23 @@ void main() {
     expect(find.text('Lanjut'), findsOneWidget);
   });
 
+  testWidgets('home opens the reader without a selected voice', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          repository: _FakeReadingRepository(),
+          preferences: const _NoVoiceReaderPreferences(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mulai Membaca'), findsOneWidget);
+    await tester.tap(find.text('Mulai Membaca'));
+    await tester.pumpAndSettle();
+    expect(find.text('بِسْمِ اللَّهِ'), findsOneWidget);
+  });
+
   testWidgets('repeat settings exposes ayah repetition count', (tester) async {
     final tracks = [
       const AudioTrack(
@@ -106,8 +155,18 @@ void main() {
 
     await tester.tap(find.text('Ulang ayat aktif'));
     await tester.pumpAndSettle();
-    expect(find.text('Jumlah putaran: 3'), findsOneWidget);
+    expect(find.text('Jumlah pemutaran ayat: 3'), findsOneWidget);
     expect(find.text('Ulang rentang ayat'), findsOneWidget);
+  });
+
+  testWidgets('repeat settings handles an empty audio queue', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: RepeatSettingsScreen(tracks: [], currentGlobalAyah: null),
+      ),
+    );
+
+    expect(find.text('Antrean audio belum tersedia.'), findsOneWidget);
   });
 
   testWidgets('search offers only the three requested filters', (tester) async {
@@ -130,6 +189,123 @@ void main() {
     );
   });
 
+  testWidgets('reading page navigation opens the selected page', (
+    tester,
+  ) async {
+    final repository = _FakeReadingRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ReadingScreen(
+          repository: repository,
+          preferences: const _ReaderPreferences(),
+          pageNumber: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Halaman 1'), findsOneWidget);
+    expect(repository.savedProgress, contains(('husary', 1)));
+    await tester.tap(find.byTooltip('Buka halaman'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '604');
+    await tester.tap(find.text('Buka'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Halaman 604'), findsOneWidget);
+    expect(find.text('Ayat halaman 604'), findsOneWidget);
+    expect(repository.savedProgress, contains(('husary', 604)));
+    await tester.tap(find.byTooltip('Simpan bookmark'));
+    await tester.pumpAndSettle();
+    expect(
+      repository.bookmarks.map((ayah) => ayah.globalNumber),
+      contains(604),
+    );
+  });
+
+  testWidgets('reader remains available without selecting a voice', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ReadingScreen(
+          repository: _FakeReadingRepository(),
+          preferences: const _NoVoiceReaderPreferences(),
+          surahNumber: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('بِسْمِ اللَّهِ'), findsOneWidget);
+    expect(find.text('Dengan nama Allah'), findsOneWidget);
+    expect(find.byTooltip('Simpan bookmark'), findsOneWidget);
+  });
+
+  testWidgets('reading progress follows the visible ayah while scrolling', (
+    tester,
+  ) async {
+    final repository = _FakeReadingRepository()
+      ..surahAyahs = List.generate(
+        20,
+        (index) => AyahEntry(
+          globalNumber: index + 1,
+          surahNumber: 1,
+          ayahNumber: index + 1,
+          juzNumber: 1,
+          pageNumber: 1,
+          uthmaniText: 'بِسْمِ اللَّهِ',
+          indonesianTranslation: 'Ayat ${index + 1}',
+        ),
+      );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ReadingScreen(
+          repository: repository,
+          preferences: const _ReaderPreferences(),
+          surahNumber: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.drag(
+      find.byType(ScrollablePositionedList),
+      const Offset(0, -1600),
+    );
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(repository.savedProgress.any((entry) => entry.$2 > 1), isTrue);
+  });
+
+  testWidgets('bookmarks can be opened from their list and removed', (
+    tester,
+  ) async {
+    final repository = _FakeReadingRepository()..bookmarks = [_sampleAyah()];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BookmarksScreen(
+          repository: repository,
+          preferences: const AppPreferences(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Al-Fatihah · 1:1'), findsOneWidget);
+    await tester.tap(find.byTooltip('Hapus bookmark'));
+    await tester.pumpAndSettle();
+
+    expect(repository.bookmarks, isEmpty);
+    expect(find.text('Al-Fatihah · 1:1'), findsNothing);
+  });
+
   test('dark theme styles dialogs and download progress', () {
     expect(AppColors.navy, const Color(0xFF132A4C));
     expect(AppColors.gold, const Color(0xFFE6B325));
@@ -147,3 +323,109 @@ void main() {
     expect(AppTheme.dark.progressIndicatorTheme.linearTrackColor, isNotNull);
   });
 }
+
+class _FakeReadingRepository extends ReadingRepository {
+  List<AyahEntry> bookmarks = [];
+  List<AyahEntry>? surahAyahs;
+  final List<(String, int)> savedProgress = [];
+
+  @override
+  Future<List<Surah>> getSurahs() async => const [
+    Surah(
+      id: 1,
+      nameArabic: 'الفاتحة',
+      nameIndonesian: 'Al-Fatihah',
+      ayahCount: 7,
+    ),
+  ];
+
+  @override
+  Future<AyahEntry?> getProgress(String voiceId) async => null;
+
+  @override
+  Future<List<AyahEntry>> getAyahsForSurah(
+    int surahNumber, {
+    int? limit,
+  }) async => surahAyahs ?? [_sampleAyah()];
+
+  @override
+  Future<int> getPageCount() async => 604;
+
+  @override
+  Future<List<AyahEntry>> getAyahsForPage(int pageNumber) async => [
+    AyahEntry(
+      globalNumber: pageNumber,
+      surahNumber: 1,
+      ayahNumber: 1,
+      juzNumber: 1,
+      pageNumber: pageNumber,
+      uthmaniText: 'بِسْمِ اللَّهِ',
+      indonesianTranslation: 'Ayat halaman $pageNumber',
+    ),
+  ];
+
+  @override
+  Future<Set<int>> getBookmarkedNumbers(List<int> globalAyahNumbers) async =>
+      bookmarks.map((ayah) => ayah.globalNumber).toSet();
+
+  @override
+  Future<List<AyahEntry>> getBookmarks() async => bookmarks;
+
+  @override
+  Future<void> saveProgress({
+    required String voiceId,
+    required int globalAyahNumber,
+  }) async {
+    savedProgress.add((voiceId, globalAyahNumber));
+  }
+
+  @override
+  Future<void> setBookmarked(int globalAyahNumber, bool bookmarked) async {
+    if (bookmarked) {
+      if (!bookmarks.any((ayah) => ayah.globalNumber == globalAyahNumber)) {
+        bookmarks = [...bookmarks, _sampleAyah(globalAyahNumber)];
+      }
+    } else {
+      bookmarks = bookmarks
+          .where((ayah) => ayah.globalNumber != globalAyahNumber)
+          .toList();
+    }
+  }
+}
+
+class _ReaderPreferences extends AppPreferences {
+  const _ReaderPreferences();
+
+  @override
+  Future<String?> get selectedVoiceId async => 'husary';
+
+  @override
+  Future<bool> get translationVisible async => true;
+
+  @override
+  Future<double> get arabicTextScale async => 1;
+}
+
+class _NoVoiceReaderPreferences extends AppPreferences {
+  const _NoVoiceReaderPreferences();
+
+  @override
+  Future<String?> get selectedVoiceId async => null;
+
+  @override
+  Future<bool> get translationVisible async => true;
+
+  @override
+  Future<double> get arabicTextScale async => 1;
+}
+
+AyahEntry _sampleAyah([int globalNumber = 1]) => AyahEntry(
+  globalNumber: globalNumber,
+  surahNumber: 1,
+  ayahNumber: 1,
+  juzNumber: 1,
+  pageNumber: 1,
+  uthmaniText: 'بِسْمِ اللَّهِ',
+  indonesianTranslation: 'Dengan nama Allah',
+  surahNameIndonesian: 'Al-Fatihah',
+);

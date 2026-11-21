@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io'
+    if (dart.library.js_interop) '../../../core/platform/unsupported_io.dart';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
@@ -8,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:storage_space/storage_space.dart';
 
 import '../../player/data/audio_repository.dart';
+import '../../voices/data/voice_audio_source.dart';
 import '../../voices/data/voice_catalog.dart';
 import 'audio_package_repository.dart';
 
@@ -984,8 +986,7 @@ class AudioDownloadManager extends ChangeNotifier {
   );
 
   String _audioUrl(Voice voice, int globalAyah) =>
-      'https://cdn.islamic.network/quran/audio/'
-      '${voice.bitrateKbps}/${voice.editionId}/$globalAyah.mp3';
+      VoiceAudioSource.urlFor(voice, globalAyah);
 
   Future<bool> _isValidMp3(File file) async {
     if (!await file.exists() || await file.length() < 4) return false;

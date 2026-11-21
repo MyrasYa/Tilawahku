@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Model ASR: bobot ONNX tidak boleh masuk Git.
+/web/asr/*.onnx
+/web/asr/*.onnx.*
+/web/asr/*.part

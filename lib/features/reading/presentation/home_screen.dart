@@ -1,12 +1,13 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/app_theme.dart';
 import '../../../core/preferences/app_preferences.dart';
 import '../../download/presentation/download_screen.dart';
 import '../../player/data/quran_audio_handler.dart';
-import '../../settings/presentation/settings_screen.dart';
 import '../data/reading_repository.dart';
+import 'bookmarks_screen.dart';
 import 'reading_screen.dart';
 import 'search_screen.dart';
 
@@ -14,18 +15,20 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.preferences,
-    required this.onSetDarkMode,
+    this.repository,
+    this.reloadSignal,
   });
 
   final AppPreferences preferences;
-  final ValueChanged<bool> onSetDarkMode;
+  final ReadingRepository? repository;
+  final ValueListenable<int>? reloadSignal;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ReadingRepository _repository = ReadingRepository();
+  late final ReadingRepository _repository;
   late Future<List<Surah>> _surahs;
   String? _voiceId;
   String? _loadError;
@@ -35,9 +38,27 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _repository = widget.repository ?? ReadingRepository();
     _surahs = _repository.getSurahs();
     _loadVoice();
+    widget.reloadSignal?.addListener(_reloadFromShell);
   }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.reloadSignal == widget.reloadSignal) return;
+    oldWidget.reloadSignal?.removeListener(_reloadFromShell);
+    widget.reloadSignal?.addListener(_reloadFromShell);
+  }
+
+  @override
+  void dispose() {
+    widget.reloadSignal?.removeListener(_reloadFromShell);
+    super.dispose();
+  }
+
+  void _reloadFromShell() => _loadVoice();
 
   Future<void> _loadVoice() async {
     try {
@@ -78,22 +99,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _openSettings() async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => SettingsScreen(
-          preferences: widget.preferences,
-          onSetDarkMode: widget.onSetDarkMode,
-        ),
-      ),
-    );
-    if (!mounted) return;
-    await _loadVoice();
-    setState(() {
-      _surahs = _repository.getSurahs();
-    });
-  }
-
   void _reloadSurahs() {
     setState(() {
       _surahs = _repository.getSurahs();
@@ -103,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _continueLast() async {
     final voiceId = _voiceId;
     if (voiceId == null) {
-      await _openSettings();
+      await _openReading(surahNumber: 1);
       return;
     }
     try {
@@ -179,24 +184,10 @@ class _HomeScreenState extends State<HomeScreen> {
     length: 2,
     child: Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Image.asset(
-              'assets/branding/tilawahku_icon.png',
-              width: 32,
-              height: 32,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'Tilawahku',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
+        title: const Text('Al-Qur’an'),
         actions: [
           IconButton(
-            tooltip: 'Cari ayat',
+            tooltip: 'Cari surah atau ayat',
             onPressed: () => Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
                 builder: (_) => SearchScreen(
@@ -208,18 +199,31 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.search_rounded),
           ),
           IconButton(
-            tooltip: 'Unduhan',
-            onPressed: () => Navigator.of(context).push(
+            tooltip: 'Bookmark ayat',
+            onPressed: () => Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
-                builder: (_) => DownloadScreen(preferences: widget.preferences),
+                builder: (_) => BookmarksScreen(
+                  repository: _repository,
+                  preferences: widget.preferences,
+                ),
               ),
             ),
-            icon: const Icon(Icons.download_rounded),
+            icon: const Icon(Icons.bookmarks_outlined),
           ),
           IconButton(
-            tooltip: 'Pengaturan',
-            onPressed: _openSettings,
-            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Unduhan audio',
+            onPressed: kIsWeb
+                ? () => _showMessage(
+                    'Audio belum tersedia secara lokal di Web preview. '
+                    'Unduhan audio tidak diaktifkan di browser.',
+                  )
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          DownloadScreen(preferences: widget.preferences),
+                    ),
+                  ),
+            icon: const Icon(Icons.download_rounded),
           ),
         ],
         bottom: const TabBar(
@@ -231,6 +235,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
+          if (kIsWeb)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _WebPreviewNotice(),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: _HomePlaybackSection(
@@ -504,7 +513,7 @@ class _ContinueCard extends StatelessWidget {
                             ? '${progress!.surahNameIndonesian ?? 'Surah ${progress!.surahNumber}'}'
                                   ' · Ayat ${progress!.ayahNumber}'
                             : voiceId == null
-                            ? 'Pilih qari untuk mulai membaca'
+                            ? 'Audio belum tersedia secara lokal · Anda tetap bisa membaca'
                             : 'Belum ada progres · mulai dari Al-Fatihah'),
                     style: const TextStyle(
                       color: AppColors.parchment,
@@ -517,6 +526,32 @@ class _ContinueCard extends StatelessWidget {
             const Icon(Icons.chevron_right, color: AppColors.gold),
           ],
         ),
+      ),
+    ),
+  );
+}
+
+class _WebPreviewNotice extends StatelessWidget {
+  const _WebPreviewNotice();
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Web preview: teks, bookmark, navigasi, dan preferensi tersedia. '
+              'Audio tidak tersedia secara lokal; pemutaran dan unduhan '
+              'dinonaktifkan di browser.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
       ),
     ),
   );

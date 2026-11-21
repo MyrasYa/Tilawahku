@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/preferences/app_preferences.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
-import '../features/reading/presentation/home_screen.dart';
-import '../features/voices/presentation/voice_selection_screen.dart';
+import '../features/navigation/presentation/main_navigation_screen.dart';
 import 'app_theme.dart';
 
 class TilawahkuApp extends StatefulWidget {
@@ -141,7 +140,6 @@ class _StartupScreenState extends State<_StartupScreen> {
     try {
       await Future<void>.delayed(const Duration(milliseconds: 1100));
       final onboardingComplete = await widget.preferences.onboardingComplete;
-      final voiceId = await widget.preferences.selectedVoiceId;
       if (!mounted) return;
 
       final Widget destination;
@@ -150,13 +148,8 @@ class _StartupScreenState extends State<_StartupScreen> {
           preferences: widget.preferences,
           onSetDarkMode: widget.onSetDarkMode,
         );
-      } else if (voiceId == null) {
-        destination = VoiceSelectionScreen(
-          preferences: widget.preferences,
-          onSetDarkMode: widget.onSetDarkMode,
-        );
       } else {
-        destination = HomeScreen(
+        destination = MainNavigationScreen(
           preferences: widget.preferences,
           onSetDarkMode: widget.onSetDarkMode,
         );

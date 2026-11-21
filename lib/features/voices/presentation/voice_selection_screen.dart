@@ -1,13 +1,16 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/app_theme.dart';
 import '../../../core/preferences/app_preferences.dart';
 import '../../download/data/audio_download_manager.dart';
 import '../../download/data/audio_package_repository.dart';
-import '../../reading/presentation/home_screen.dart';
+import '../../player/data/quran_audio_handler.dart';
+import '../../navigation/presentation/main_navigation_screen.dart';
 import '../data/voice_catalog.dart';
+import '../data/voice_preview_controller.dart';
 import '../data/voice_repository.dart';
 
 class VoiceSelectionScreen extends StatefulWidget {
@@ -16,11 +19,17 @@ class VoiceSelectionScreen extends StatefulWidget {
     required this.preferences,
     required this.onSetDarkMode,
     this.allowBack = false,
+    this.previewController,
+    this.isMainAudioPlaying,
+    this.mainAudioPlayingStream,
   });
 
   final AppPreferences preferences;
   final ValueChanged<bool> onSetDarkMode;
   final bool allowBack;
+  final VoicePreviewController? previewController;
+  final bool Function()? isMainAudioPlaying;
+  final Stream<bool>? mainAudioPlayingStream;
 
   @override
   State<VoiceSelectionScreen> createState() => _VoiceSelectionScreenState();
@@ -32,14 +41,87 @@ class _VoiceSelectionScreenState extends State<VoiceSelectionScreen> {
   final AudioDownloadManager _downloadManager = AudioDownloadManager.instance;
   final AudioPackageRepository _packageRepository = AudioPackageRepository();
   late final Future<List<Voice>> _voices = _catalog.load();
+  late final VoicePreviewController _previewController;
+  StreamSubscription<bool>? _mainPlaybackSubscription;
   String? _selectedVoiceId;
+  bool _mainAudioPlaying = false;
   bool _saving = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _previewController =
+        widget.previewController ?? VoicePreviewController(enabled: !kIsWeb);
+    final mainHandler = QuranAudioHandler.instance;
+    _mainAudioPlaying =
+        widget.isMainAudioPlaying?.call() ??
+        (mainHandler?.playbackState.value.playing ?? false);
+    final mainPlaybackStream =
+        widget.mainAudioPlayingStream ??
+        mainHandler?.playbackState.map((state) => state.playing);
+    _mainPlaybackSubscription = mainPlaybackStream?.listen(
+      _handleMainAudioPlaying,
+    );
     _loadSelectedVoice();
+  }
+
+  void _handleMainAudioPlaying(bool playing) {
+    if (!mounted || playing == _mainAudioPlaying) return;
+    setState(() => _mainAudioPlaying = playing);
+    final preview = _previewController.state.value;
+    if (playing &&
+        (preview.status == VoicePreviewStatus.loading ||
+            preview.status == VoicePreviewStatus.playing)) {
+      unawaited(_stopPreviewForMainAudio());
+    }
+  }
+
+  Future<void> _stopPreviewForMainAudio() async {
+    try {
+      await _previewController.stop();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghentikan preview: $error')),
+        );
+      }
+    }
+  }
+
+  bool get _isMainAudioPlaying =>
+      widget.isMainAudioPlaying?.call() ??
+      (QuranAudioHandler.instance?.playbackState.value.playing ?? false);
+
+  Future<void> _togglePreview(Voice voice) async {
+    if (kIsWeb) return;
+    if (_isMainAudioPlaying) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Preview tidak tersedia saat audio utama sedang diputar.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final preview = _previewController.state.value;
+    if (preview.voiceId == voice.id &&
+        (preview.status == VoicePreviewStatus.loading ||
+            preview.status == VoicePreviewStatus.playing)) {
+      try {
+        await _previewController.stop();
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal menghentikan preview: $error')),
+          );
+        }
+      }
+      return;
+    }
+    await _previewController.play(voice);
   }
 
   Future<void> _loadSelectedVoice() async {
@@ -63,6 +145,22 @@ class _VoiceSelectionScreenState extends State<VoiceSelectionScreen> {
       final voices = await _voices;
       if (!mounted) return;
       final selectedVoice = voices.firstWhere((voice) => voice.id == voiceId);
+      if (kIsWeb) {
+        await _voiceRepository.save(selectedVoice);
+        await widget.preferences.setSelectedVoiceId(voiceId);
+        if (!mounted) return;
+        _leaveSelection(voiceId);
+        return;
+      }
+
+      if (selectedVoice.audioMode == VoiceAudioMode.surah) {
+        await _voiceRepository.save(selectedVoice);
+        await widget.preferences.setSelectedVoiceId(voiceId);
+        if (!mounted) return;
+        _leaveSelection(voiceId);
+        return;
+      }
+
       final previousVoiceId = await widget.preferences.selectedVoiceId;
       if (!mounted) return;
       if (previousVoiceId == voiceId) {
@@ -194,13 +292,20 @@ class _VoiceSelectionScreenState extends State<VoiceSelectionScreen> {
     } else {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
-          builder: (_) => HomeScreen(
+          builder: (_) => MainNavigationScreen(
             preferences: widget.preferences,
             onSetDarkMode: widget.onSetDarkMode,
           ),
         ),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _mainPlaybackSubscription?.cancel();
+    unawaited(_previewController.dispose());
+    super.dispose();
   }
 
   @override
@@ -228,6 +333,21 @@ class _VoiceSelectionScreenState extends State<VoiceSelectionScreen> {
         final voices = snapshot.data!;
         return Column(
           children: [
+            if (kIsWeb)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Text(
+                  'Pemilihan qari opsional. Pemutaran dan unduhan audio '
+                  'tidak tersedia di Web preview.',
+                ),
+              ),
+            if (!kIsWeb && _mainAudioPlaying)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Text(
+                  'Preview dinonaktifkan selama audio utama sedang diputar.',
+                ),
+              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
@@ -236,11 +356,23 @@ class _VoiceSelectionScreenState extends State<VoiceSelectionScreen> {
                     'Pilih qari untuk menemani tilawah Anda.',
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Semua preview memakai contoh yang sama: '
+                    'Al-Fatihah ayat 1.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 20),
                   for (final voice in voices)
                     _VoiceCard(
                       voice: voice,
                       selected: _selectedVoiceId == voice.id,
+                      previewController: _previewController,
+                      previewEnabled:
+                          !kIsWeb &&
+                          !_mainAudioPlaying &&
+                          voice.status == VoiceStatus.active,
+                      onPreview: () => _togglePreview(voice),
                       onSelect: voice.status == VoiceStatus.active
                           ? () => setState(() => _selectedVoiceId = voice.id)
                           : null,
@@ -285,16 +417,31 @@ class _VoiceCard extends StatelessWidget {
     required this.voice,
     required this.selected,
     required this.onSelect,
+    required this.previewController,
+    required this.previewEnabled,
+    required this.onPreview,
   });
 
   final Voice voice;
   final bool selected;
   final VoidCallback? onSelect;
+  final VoicePreviewController previewController;
+  final bool previewEnabled;
+  final VoidCallback onPreview;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      ValueListenableBuilder<VoicePreviewState>(
+        valueListenable: previewController.state,
+        builder: (context, previewState, _) =>
+            _buildCard(context, previewState),
+      );
+
+  Widget _buildCard(BuildContext context, VoicePreviewState previewState) {
     final unavailable = voice.status != VoiceStatus.active;
+    final isCurrentPreview = previewState.voiceId == voice.id;
     return Card(
+      key: ValueKey('voice-selection-${voice.id}'),
       margin: const EdgeInsets.only(top: 12),
       child: InkWell(
         onTap: onSelect,
@@ -324,9 +471,74 @@ class _VoiceCard extends StatelessWidget {
                       unavailable ? 'Segera hadir' : voice.style,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: voice.audioMode == VoiceAudioMode.surah
+                            ? Theme.of(context).colorScheme.tertiaryContainer
+                            : Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        voice.audioMode == VoiceAudioMode.surah
+                            ? 'Audio Per Surah'
+                            : 'Audio Per Ayat',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (voice.audioMode == VoiceAudioMode.surah) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Memutar satu surah secara utuh. Pengulangan ayat '
+                        'atau rentang ayat belum tersedia untuk sumber audio ini.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                    if (isCurrentPreview &&
+                        previewState.status == VoicePreviewStatus.error) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Preview gagal: ${previewState.error}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
+              if (voice.audioMode == VoiceAudioMode.ayah)
+                IconButton(
+                  key: ValueKey('voice-preview-${voice.id}'),
+                  tooltip:
+                      isCurrentPreview &&
+                          (previewState.status == VoicePreviewStatus.playing ||
+                              previewState.status == VoicePreviewStatus.loading)
+                      ? 'Hentikan preview ${voice.name}'
+                      : 'Dengarkan contoh ${voice.name}',
+                  onPressed: previewEnabled ? onPreview : null,
+                  icon:
+                      isCurrentPreview &&
+                          previewState.status == VoicePreviewStatus.loading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          isCurrentPreview &&
+                                  previewState.status ==
+                                      VoicePreviewStatus.playing
+                              ? Icons.stop_circle_outlined
+                              : Icons.play_circle_outline_rounded,
+                        ),
+                ),
               if (selected)
                 const Icon(
                   Icons.check_circle_rounded,

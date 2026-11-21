@@ -72,7 +72,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await widget.preferences.setTranslationVisible(value);
     } catch (error) {
       if (mounted) {
-        setState(() => _error = 'Gagal menyimpan preferensi terjemahan: $error');
+        setState(
+          () => _error = 'Gagal menyimpan preferensi terjemahan: $error',
+        );
       }
     }
   }
@@ -176,9 +178,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push<void>(
                     MaterialPageRoute<void>(
-                      builder: (_) => DownloadScreen(
-                        preferences: widget.preferences,
-                      ),
+                      builder: (_) =>
+                          DownloadScreen(preferences: widget.preferences),
                     ),
                   ),
                 ),

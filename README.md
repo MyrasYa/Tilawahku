@@ -10,7 +10,8 @@ The downloads screen groups audio progress and storage use by juz.
 - `lib/app/` — application bootstrap and centralized light/dark themes.
 - `lib/core/database/` — SQLite schema, migration, and bundled database copy.
 - `lib/core/preferences/` — onboarding and local preferences.
-- `lib/features/reading/` — home, reader, and content repository.
+- `lib/features/reading/` — home, page and surah reader, scroll-saved reading
+  progress, bookmark management, and content repository.
 - `lib/features/voices/` — local voice catalog and voice selection.
 - `lib/features/player/` — local audio repository, background playback, and
   repeat/player screens.
@@ -42,6 +43,13 @@ Kementerian Agama edition unless the exact text is matched against the
 authorized Kemenag source. The app owner has stated that written permission is
 available, but the permission and dataset-to-edition match are not verified by
 this repository. Confirm those before distribution.
+
+Muhammad al-Luhaidan is streamed as complete surah files from the
+`ar.muhammadalluhaidan` AlQuran.cloud edition through the Islamic Network CDN.
+Its API currently maps all 114 surahs to 128 kbps MP3 URLs. Ayah/range repeat
+and offline downloads are not available for this source. The license or
+redistribution permission for the specific recording has not been verified;
+confirm it before distributing the audio.
 
 The Latin transliteration is displayed below each Arabic ayah and comes from
 AlQuran.cloud's `en.transliteration` edition.
@@ -79,6 +87,26 @@ flutter test
 
 Background audio uses `just_audio` and `audio_service`. The Android activity
 and manifest are configured for background playback and system media controls.
+
+## Flutter Web preview
+
+The browser preview uses the experimental `sqflite_common_ffi_web` SQLite
+driver, which stores its database in IndexedDB. After `flutter pub get`, install
+the driver's WebAssembly and worker files into `web/`:
+
+```shell
+dart run sqflite_common_ffi_web:setup
+flutter run -d chrome
+```
+
+The Web database is initialized from `assets/data/quran_web_preview.json`.
+That fixture is generated from the project's bundled SQLite content with
+`python tools/build_quran_web_preview.py`; it contains the same 114 surahs and
+6,236 ayahs, translations, and transliterations. Bookmarks and reading
+preferences are stored by the browser's SQLite/IndexedDB and
+SharedPreferences/Web implementations, respectively. Web preview does not
+enable audio playback or audio downloads; it displays this limitation instead
+of claiming that audio is stored locally.
 
 ## Current operational limitations
 
